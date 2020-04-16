@@ -40,6 +40,7 @@ void PointerShader::Init()
 {
 	static const char *vertexCode =
 		"// vertex pointer shader\n"
+		"precision mediump float;\n"
 		"uniform vec2 scale;\n"
 		"uniform vec2 center;\n"
 		"uniform vec2 angle;\n"
