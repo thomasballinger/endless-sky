@@ -39,8 +39,7 @@ env.Append(LIBS = [
 	"SDL2",
 	"png",
 	"jpeg",
-	"GL",
-	"GLEW",
+	"GLESv2",
 	"openal",
 	"pthread"
 ]);

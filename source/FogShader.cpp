@@ -62,6 +62,7 @@ namespace {
 void FogShader::Init()
 {
 	static const char *vertexCode =
+		"// vertex fog shader\n"
 		"uniform vec2 corner;\n"
 		"uniform vec2 dimensions;\n"
 		
@@ -74,6 +75,9 @@ void FogShader::Init()
 		"}\n";
 
 	static const char *fragmentCode =
+		"// fragment fog shader\n"
+		"precision mediump sampler2D;\n"
+		"precision mediump float;\n"
 		"uniform sampler2D tex;\n"
 		
 		"in vec2 fragTexCoord;\n"

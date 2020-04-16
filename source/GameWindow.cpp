@@ -109,7 +109,9 @@ bool GameWindow::Init()
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #endif
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);	
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);	
 	SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
 		
 	context = SDL_GL_CreateContext(mainWindow);
@@ -125,11 +127,6 @@ bool GameWindow::Init()
 			
 	// Initialize GLEW.
 #ifndef __APPLE__
-	glewExperimental = GL_TRUE;
-	if(glewInit() != GLEW_OK){
-		ExitWithError("Unable to initialize GLEW!");
-		return false;
-	}
 #endif
 	
 	// Check that the OpenGL version is high enough.

@@ -95,7 +95,7 @@ GLuint Shader::Compile(const char *str, GLenum type)
 	static string version;
 	if(version.empty())
 	{
-		version = "#version ";
+		version = "#version 300 es";
 		string glsl = reinterpret_cast<const char *>(glGetString(GL_SHADING_LANGUAGE_VERSION));
 		for(char c : glsl)
 		{

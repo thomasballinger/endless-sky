@@ -208,7 +208,7 @@ void SpriteShader::Add(const Item &item, bool withBlur)
 	// Bounds check for the swizzle value:
 	int swizzle = (static_cast<size_t>(item.swizzle) >= SWIZZLE.size() ? 0 : item.swizzle);
 	// Set the color swizzle.
-	glTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE[swizzle].data());
+	glTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_SWIZZLE_R, SWIZZLE[swizzle].data());
 	
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
@@ -221,5 +221,5 @@ void SpriteShader::Unbind()
 	glUseProgram(0);
 	
 	// Reset the swizzle.
-	glTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE[0].data());
+	glTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_SWIZZLE_R, SWIZZLE[0].data());
 }
