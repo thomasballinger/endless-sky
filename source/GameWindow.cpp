@@ -31,7 +31,6 @@ namespace {
 	SDL_GLContext context;
 	int width = 0;
 	int height = 0;
-	bool hasSwizzle = false;
 		
 	// Logs SDL errors and returns true if found
 	bool checkSDLerror()
@@ -181,18 +180,6 @@ bool GameWindow::Init()
 	// want, because the ".icns" icon that is used automatically is prettier.
 	SetIcon();
 	
-	const char *extensions = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
-	hasSwizzle = strstr(extensions, swizzleName.c_str());
-#else
-	bool swizzled = false;
-	GLint extensionCount;
-	glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount);
-	for(GLint i = 0; i < extensionCount && !swizzled; ++i)
-	{
-		const char *extension = reinterpret_cast<const char *>(glGetStringi(GL_EXTENSIONS, i));
-		swizzled = (extension && strstr(extension, swizzleName.c_str()));
-	}
-	hasSwizzle = swizzled;
 #endif
 
 	return true;
@@ -332,12 +319,6 @@ void GameWindow::ToggleFullscreen()
 		SDL_SetWindowFullscreen(mainWindow, SDL_WINDOW_FULLSCREEN_DESKTOP);
 }
 
-
-
-bool GameWindow::HasSwizzle()
-{
-	return hasSwizzle;
-}
 
 
 

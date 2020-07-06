@@ -31,6 +31,7 @@ namespace {
 	GLint blurI;
 	GLint clipI;
 	GLint alphaI;
+	GLint swizzlerI;
 	
 	GLuint vao;
 	GLuint vbo;
@@ -77,6 +78,7 @@ void SpriteShader::Init()
 		"uniform float frame;\n"
 		"uniform float frameCount;\n"
 		"uniform vec2 blur;\n"
+		"uniform int swizzler;\n"
 		"uniform float alpha;\n"
 		"const int range = 5;\n"
 		
@@ -114,6 +116,35 @@ void SpriteShader::Init()
 		"        color += scale * texture(tex, vec3(coord, first));\n"
 		"    }\n"
 		"  }\n"
+		"  switch (swizzler) {\n"
+		"    case 0:\n"
+		"      color = color.rgba;\n"
+		"      break;\n"
+		"    case 1:\n"
+		"      color = color.rbga;\n"
+		"      break;\n"
+		"    case 2:\n"
+		"      color = color.grba;\n"
+		"      break;\n"
+		"    case 3:\n"
+		"      color = color.brga;\n"
+		"      break;\n"
+		"    case 4:\n"
+		"      color = color.gbra;\n"
+		"      break;\n"
+		"    case 5:\n"
+		"      color = color.bgra;\n"
+		"      break;\n"
+		"    case 6:\n"
+		"      color = color.gbba;\n"
+		"      break;\n"
+		"    case 7:\n"
+		"      color = vec4(color.b, 0.f, 0.f, color.a);\n"
+		"      break;\n"
+		"    case 8:\n"
+		"      color = vec4(0.f, 0.f, 0.f, color.a);\n"
+		"      break;\n"
+		"  }\n"
 		"  finalColor = color * alpha;\n"
 		"}\n";
 	
@@ -126,6 +157,7 @@ void SpriteShader::Init()
 	blurI = shader.Uniform("blur");
 	clipI = shader.Uniform("clip");
 	alphaI = shader.Uniform("alpha");
+	swizzlerI = shader.Uniform("swizzler");
 	
 	glUseProgram(shader.Object());
 	glUniform1i(shader.Uniform("tex"), 0);
@@ -210,7 +242,7 @@ void SpriteShader::Add(const Item &item, bool withBlur)
 	// Bounds check for the swizzle value:
 	int swizzle = (static_cast<size_t>(item.swizzle) >= SWIZZLE.size() ? 0 : item.swizzle);
 	// Set the color swizzle.
-	glTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE[swizzle].data());
+	glUniform1i(swizzlerI, swizzle);
 	
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
@@ -223,5 +255,5 @@ void SpriteShader::Unbind()
 	glUseProgram(0);
 	
 	// Reset the swizzle.
-	glTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE[0].data());
+	glUniform1i(swizzlerI, 0);
 }
