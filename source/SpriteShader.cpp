@@ -31,7 +31,8 @@ namespace {
 	GLint blurI;
 	GLint clipI;
 	GLint alphaI;
-	
+	GLint swizzlerI;
+
 	GLuint vao;
 	GLuint vbo;
 
@@ -60,30 +61,31 @@ void SpriteShader::Init()
 		"uniform mat2 transform;\n"
 		"uniform vec2 blur;\n"
 		"uniform float clip;\n"
-		
+
 		"in vec2 vert;\n"
 		"out vec2 fragTexCoord;\n"
-		
+
 		"void main() {\n"
 		"  vec2 blurOff = 2 * vec2(vert.x * abs(blur.x), vert.y * abs(blur.y));\n"
 		"  gl_Position = vec4((transform * (vert + blurOff) + position) * scale, 0, 1);\n"
 		"  vec2 texCoord = vert + vec2(.5, .5);\n"
 		"  fragTexCoord = vec2(texCoord.x, max(clip, texCoord.y)) + blurOff;\n"
 		"}\n";
-	
+
 	static const char *fragmentCode =
 		"// fragment sprite shader\n"
 		"uniform sampler2DArray tex;\n"
 		"uniform float frame;\n"
 		"uniform float frameCount;\n"
 		"uniform vec2 blur;\n"
+		"uniform int swizzler;\n"
 		"uniform float alpha;\n"
 		"const int range = 5;\n"
-		
+
 		"in vec2 fragTexCoord;\n"
-		
+
 		"out vec4 finalColor;\n"
-		
+
 		"void main() {\n"
 		"  float first = floor(frame);\n"
 		"  float second = mod(ceil(frame), frameCount);\n"
@@ -114,9 +116,38 @@ void SpriteShader::Init()
 		"        color += scale * texture(tex, vec3(coord, first));\n"
 		"    }\n"
 		"  }\n"
+		"  switch (swizzler) {\n"
+		"    case 0:\n"
+		"      color = color.rgba;\n"
+		"      break;\n"
+		"    case 1:\n"
+		"      color = color.rbga;\n"
+		"      break;\n"
+		"    case 2:\n"
+		"      color = color.grba;\n"
+		"      break;\n"
+		"    case 3:\n"
+		"      color = color.brga;\n"
+		"      break;\n"
+		"    case 4:\n"
+		"      color = color.gbra;\n"
+		"      break;\n"
+		"    case 5:\n"
+		"      color = color.bgra;\n"
+		"      break;\n"
+		"    case 6:\n"
+		"      color = color.gbba;\n"
+		"      break;\n"
+		"    case 7:\n"
+		"      color = vec4(color.b, 0.f, 0.f, color.a);\n"
+		"      break;\n"
+		"    case 8:\n"
+		"      color = vec4(0.f, 0.f, 0.f, color.a);\n"
+		"      break;\n"
+		"  }\n"
 		"  finalColor = color * alpha;\n"
 		"}\n";
-	
+
 	shader = Shader(vertexCode, fragmentCode);
 	scaleI = shader.Uniform("scale");
 	frameI = shader.Uniform("frame");
@@ -126,18 +157,19 @@ void SpriteShader::Init()
 	blurI = shader.Uniform("blur");
 	clipI = shader.Uniform("clip");
 	alphaI = shader.Uniform("alpha");
-	
+	swizzlerI = shader.Uniform("swizzler");
+
 	glUseProgram(shader.Object());
 	glUniform1i(shader.Uniform("tex"), 0);
 	glUseProgram(0);
-	
+
 	// Generate the vertex data for drawing sprites.
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
-	
+
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	
+
 	GLfloat vertexData[] = {
 		-.5f, -.5f,
 		-.5f,  .5f,
@@ -145,10 +177,10 @@ void SpriteShader::Init()
 		 .5f,  .5f
 	};
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexData), vertexData, GL_STATIC_DRAW);
-	
+
 	glEnableVertexAttribArray(shader.Attrib("vert"));
 	glVertexAttribPointer(shader.Attrib("vert"), 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), nullptr);
-	
+
 	// unbind the VBO and VAO
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
@@ -160,7 +192,7 @@ void SpriteShader::Draw(const Sprite *sprite, const Point &position, float zoom,
 {
 	if(!sprite)
 		return;
-	
+
 	Item item;
 	item.texture = sprite->Texture();
 	item.frame = frame;
@@ -173,7 +205,7 @@ void SpriteShader::Draw(const Sprite *sprite, const Point &position, float zoom,
 	item.transform[3] = sprite->Height() * zoom;
 	// Swizzle.
 	item.swizzle = swizzle;
-	
+
 	Bind();
 	Add(item);
 	Unbind();
@@ -185,7 +217,7 @@ void SpriteShader::Bind()
 {
 	glUseProgram(shader.Object());
 	glBindVertexArray(vao);
-	
+
 	GLfloat scale[2] = {2.f / Screen::Width(), -2.f / Screen::Height()};
 	glUniform2fv(scaleI, 1, scale);
 }
@@ -206,12 +238,12 @@ void SpriteShader::Add(const Item &item, bool withBlur)
 	// Clipping has the opposite sense in the shader.
 	glUniform1f(clipI, 1.f - item.clip);
 	glUniform1f(alphaI, item.alpha);
-	
+
 	// Bounds check for the swizzle value:
 	int swizzle = (static_cast<size_t>(item.swizzle) >= SWIZZLE.size() ? 0 : item.swizzle);
 	// Set the color swizzle.
-	glTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE[swizzle].data());
-	
+	glUniform1i(swizzlerI, swizzle);
+
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
@@ -221,7 +253,7 @@ void SpriteShader::Unbind()
 {
 	glBindVertexArray(0);
 	glUseProgram(0);
-	
+
 	// Reset the swizzle.
-	glTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE[0].data());
+	glUniform1i(swizzlerI, 0);
 }
