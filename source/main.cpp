@@ -85,12 +85,12 @@ int main(int argc, char *argv[])
 		else if(arg == "-p" || arg == "--parse-save")
 			loadOnly = true;
 	}
-	
+
 	try {
 		// Begin loading the game data. Exit early if we are not using the UI.
 		if(!GameData::BeginLoad(argv))
 			return 0;
-		
+
 		// Load player data, including reference-checking.
 		PlayerInfo player;
 		bool checkedReferences = player.LoadRecent();
@@ -101,25 +101,25 @@ int main(int argc, char *argv[])
 			cout << "Parse completed." << endl;
 			return 0;
 		}
-		
+
 		// On Windows, make sure that the sleep timer has at least 1 ms resolution
 		// to avoid irregular frame rates.
 #ifdef _WIN32
 		timeBeginPeriod(1);
 #endif
-		
+
 		Preferences::Load();
-		
+
 		if(!GameWindow::Init())
 			return 1;
-		
+
 		GameData::LoadShaders();
-		
+
 		// Show something other than a blank window.
 		GameWindow::Step();
-		
+
 		Audio::Init(GameData::Sources());
-		
+
 		// This is the main loop where all the action begins.
 		GameLoop(player, conversation, debugMode);
 	}
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 		GameWindow::ExitWithError(error.what());
 		return 1;
 	}
-	
+
 	// Remember the window state and preferences if quitting normally.
 	Preferences::Set("maximized", GameWindow::IsMaximized());
 	Preferences::Set("fullscreen", GameWindow::IsFullscreen());
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 
 	Audio::Quit();
 	GameWindow::Quit();
-	
+
 	return 0;
 }
 
@@ -150,51 +150,44 @@ void GameLoop(PlayerInfo &player, Conversation &conversation, bool &debugMode)
 	// priority over the gamePanels. The gamePanels will not be shown until
 	// the stack of menuPanels is empty.
 	UI gamePanels;
-	
+
 	// menuPanels is used for the panels related to pilot creation, preferences,
 	// game loading and game saving.
 	UI menuPanels;
-	
+
 	menuPanels.Push(new MenuPanel(player, gamePanels));
 	if(!conversation.IsEmpty())
 		menuPanels.Push(new ConversationPanel(player, conversation));
 
-	if(!GameWindow::HasSwizzle())
-		menuPanels.Push(new Dialog(
-			"Note: your computer does not support the \"texture swizzling\" OpenGL feature, "
-			"which Endless Sky uses to draw ships in different colors depending on which "
-			"government they belong to. So, all human ships will be the same color, which "
-			"may be confusing. Consider upgrading your graphics driver (or your OS)."));
-			
 	bool showCursor = true;
 	int cursorTime = 0;
 	int frameRate = 60;
 	FrameTimer timer(frameRate);
 	bool isPaused = false;
 	bool isFastForward = false;
-	
+
 	// If fast forwarding, keep track of whether the current frame should be drawn.
 	int skipFrame = 0;
-	
+
 	// Limit how quickly full-screen mode can be toggled.
 	int toggleTimeout = 0;
-	
+
 	// IsDone becomes true when the game is quit.
 	while(!menuPanels.IsDone())
 	{
 		if(toggleTimeout)
 			--toggleTimeout;
-			
+
 		// Handle any events that occurred in this frame.
 		SDL_Event event;
 		while(SDL_PollEvent(&event))
 		{
 			UI &activeUI = (menuPanels.IsEmpty() ? gamePanels : menuPanels);
-			
+
 			// If the mouse moves, reset the cursor movement timeout.
 			if(event.type == SDL_MOUSEMOTION)
 				cursorTime = 0;
-			
+
 			if(debugMode && event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_BACKQUOTE)
 			{
 				isPaused = !isPaused;
@@ -236,7 +229,7 @@ void GameLoop(PlayerInfo &player, Conversation &conversation, bool &debugMode)
 		}
 		SDL_Keymod mod = SDL_GetModState();
 		Font::ShowUnderlines(mod & KMOD_ALT);
-		
+
 		// In full-screen mode, hide the cursor if inactive for ten seconds,
 		// but only if the player is flying around in the main view.
 		bool inFlight = (menuPanels.IsEmpty() && gamePanels.Root() == gamePanels.Top());
@@ -247,10 +240,10 @@ void GameLoop(PlayerInfo &player, Conversation &conversation, bool &debugMode)
 			showCursor = shouldShowCursor;
 			SDL_ShowCursor(showCursor);
 		}
-		
+
 		// Tell all the panels to step forward, then draw them.
 		((!isPaused && menuPanels.IsEmpty()) ? gamePanels : menuPanels).StepAll();
-		
+
 		// Caps lock slows the frame rate in debug mode.
 		// Slowing eases in and out over a couple of frames.
 		if((mod & KMOD_CAPS) && inFlight && debugMode)
@@ -268,7 +261,7 @@ void GameLoop(PlayerInfo &player, Conversation &conversation, bool &debugMode)
 				frameRate = min(frameRate + 5, 60);
 				timer.SetFrameRate(frameRate);
 			}
-			
+
 			if(isFastForward && inFlight)
 			{
 				skipFrame = (skipFrame + 1) % 3;
@@ -276,20 +269,20 @@ void GameLoop(PlayerInfo &player, Conversation &conversation, bool &debugMode)
 					continue;
 			}
 		}
-		
+
 		Audio::Step();
-		
+
 		// Events in this frame may have cleared out the menu, in which case
 		// we should draw the game panels instead:
 		(menuPanels.IsEmpty() ? gamePanels : menuPanels).DrawAll();
 		if(isFastForward)
 			SpriteShader::Draw(SpriteSet::Get("ui/fast forward"), Screen::TopLeft() + Point(10., 10.));
-		
+
 		GameWindow::Step();
 
 		timer.Wait();
 	}
-	
+
 	// If player quit while landed on a planet, save the game if there are changes.
 	if(player.GetPlanet() && gamePanels.CanSave())
 		player.Save();
@@ -340,7 +333,7 @@ Conversation LoadConversation()
 			conversation.Load(node);
 			break;
 		}
-	
+
 	const map<string, string> subs = {
 		{"<bunks>", "[N]"},
 		{"<cargo>", "[N tons of Commodity]"},
@@ -370,15 +363,15 @@ void InitConsole()
 	bool redirectStdout = _fileno(stdout) == UNINITIALIZED;
 	bool redirectStderr = _fileno(stderr) == UNINITIALIZED;
 	bool redirectStdin = _fileno(stdin) == UNINITIALIZED;
-	
+
 	// Bail if stdin, stdout, and stderr are already initialized (e.g. writing to a file)
 	if(!redirectStdout && !redirectStderr && !redirectStdin)
 		return;
-	
+
 	// Bail if we fail to attach to the console
 	if(!AttachConsole(ATTACH_PARENT_PROCESS) && !AllocConsole())
 		return;
-	
+
 	// Perform console redirection.
 	if(redirectStdout && freopen("CONOUT$", "w", stdout))
 		setvbuf(stdout, nullptr, _IOFBF, 4096);
