@@ -27,24 +27,27 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 using namespace std;
 
 namespace {
+#ifndef ES_NO_AUDIO
 	// Read a WAV header, and return the size of the data, in bytes. If the file
 	// is an unsupported format (anything but little-endian 16-bit PCM at 44100 HZ),
 	// this will return 0.
 	uint32_t ReadHeader(File &in, uint32_t &frequency);
 	uint32_t Read4(File &in);
 	uint16_t Read2(File &in);
+#endif // ES_NO_AUDIO
 }
 
 
 
 bool Sound::Load(const string &path, const string &name)
 {
+#ifndef ES_NO_AUDIO
 	if(path.length() < 5 || path.compare(path.length() - 4, 4, ".wav"))
 		return false;
 	this->name = name;
-	
+
 	isLooped = path[path.length() - 5] == '~';
-	
+
 	File in(path);
 	if(!in)
 		return false;
@@ -52,15 +55,16 @@ bool Sound::Load(const string &path, const string &name)
 	uint32_t bytes = ReadHeader(in, frequency);
 	if(!bytes)
 		return false;
-	
+
 	vector<char> data(bytes);
 	if(fread(&data[0], 1, bytes, in) != bytes)
 		return false;
-	
+
 	if(!buffer)
 		alGenBuffers(1, &buffer);
 	alBufferData(buffer, AL_FORMAT_MONO16, &data.front(), bytes, frequency);
-	
+#endif // ES_NO_AUDIO
+
 	return true;
 }
 
@@ -88,6 +92,7 @@ bool Sound::IsLooping() const
 
 
 namespace {
+#ifndef ES_NO_AUDIO
 	// Read a WAV header, and return the size of the data, in bytes. If the file
 	// is an unsupported format (anything but little-endian 16-bit PCM at 44100 HZ),
 	// this will return 0.
@@ -96,36 +101,36 @@ namespace {
 		uint32_t chunkID = Read4(in);
 		if(chunkID != 0x46464952) // "RIFF" in big endian.
 			return 0;
-		
+
 		// Ignore the "chunk size".
 		Read4(in);
 		uint32_t format = Read4(in);
 		if(format != 0x45564157) // "WAVE"
 			return 0;
-		
+
 		bool foundHeader = false;
 		while(true)
 		{
 			uint32_t subchunkID = Read4(in);
 			uint32_t subchunkSize = Read4(in);
-			
+
 			if(subchunkID == 0x20746d66) // "fmt "
 			{
 				foundHeader = true;
 				if(subchunkSize < 16)
 					return 0;
-				
+
 				uint16_t audioFormat = Read2(in);
 				uint16_t numChannels = Read2(in);
 				frequency = Read4(in);
 				uint32_t byteRate = Read4(in);
 				uint32_t blockAlign = Read2(in);
 				uint32_t bitsPerSample = Read2(in);
-				
+
 				// Skip any further bytes in this chunk.
 				if(subchunkSize > 16)
 					fseek(in, subchunkSize - 16, SEEK_CUR);
-				
+
 				if(audioFormat != 1)
 					return 0;
 				if(numChannels != 1)
@@ -147,9 +152,9 @@ namespace {
 				fseek(in, subchunkSize, SEEK_CUR);
 		}
 	}
-	
-	
-	
+
+
+
 	uint32_t Read4(File &in)
 	{
 		unsigned char data[4];
@@ -160,9 +165,9 @@ namespace {
 			result |= static_cast<uint32_t>(data[i]) << (i * 8);
 		return result;
 	}
-	
-	
-	
+
+
+
 	uint16_t Read2(File &in)
 	{
 		unsigned char data[2];
@@ -173,4 +178,5 @@ namespace {
 			result |= static_cast<uint16_t>(data[i]) << (i * 8);
 		return result;
 	}
+#endif // ES_NO_AUDIO
 }

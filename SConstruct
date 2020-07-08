@@ -19,6 +19,7 @@ opts.Add(PathVariable("PREFIX", "Directory to install under", "/usr/local", Path
 opts.Add(PathVariable("DESTDIR", "Destination root directory", "", PathVariable.PathAccept))
 opts.Add(EnumVariable("mode", "Compilation mode", "release", allowed_values=("release", "debug", "profile")))
 opts.Add(EnumVariable("opengl", "Whether to use OpenGL or OpenGL ES", "desktop", allowed_values=("desktop", "gles")))
+opts.Add(EnumVariable("audio", "Whether to use audio", "on", allowed_values=("on", "off")))
 opts.Add(PathVariable("BUILDDIR", "Build directory", "build", PathVariable.PathIsDirCreate))
 opts.Update(env)
 
@@ -37,9 +38,11 @@ env.Append(LIBS = [
 	"SDL2",
 	"png",
 	"jpeg",
-	"openal",
 	"pthread"
 ]);
+
+if env["audio"] == "off":
+	flags += ["-DES_NO_AUDIO"]
 
 if env["opengl"] == "desktop":
 	env.Append(LIBS = [
@@ -57,13 +60,17 @@ else:
 # -msse3 or (if just building for your own computer) -march=native.
 env.Append(CCFLAGS = flags)
 
-# libmad is not in the Steam runtime, so link it statically:
-if 'SCHROOT_CHROOT_NAME' in os.environ and 'steamrt_scout_i386' in os.environ['SCHROOT_CHROOT_NAME']:
-	env.Append(LIBS = File("/usr/lib/i386-linux-gnu/libmad.a"))
-elif 'SCHROOT_CHROOT_NAME' in os.environ and 'steamrt_scout_amd64' in os.environ['SCHROOT_CHROOT_NAME']:
-	env.Append(LIBS = File("/usr/lib/x86_64-linux-gnu/libmad.a"))
-else:
-	env.Append(LIBS = "mad")
+if env["audio"] == "on":
+	# libmad is not in the Steam runtime, so link it statically:
+	if 'SCHROOT_CHROOT_NAME' in os.environ and 'steamrt_scout_i386' in os.environ['SCHROOT_CHROOT_NAME']:
+		env.Append(LIBS = File("/usr/lib/i386-linux-gnu/libmad.a"))
+	elif 'SCHROOT_CHROOT_NAME' in os.environ and 'steamrt_scout_amd64' in os.environ['SCHROOT_CHROOT_NAME']:
+		env.Append(LIBS = File("/usr/lib/x86_64-linux-gnu/libmad.a"))
+	else:
+		env.Append(LIBS = "mad")
+	env.Append(LIBS = [
+		"openal"
+	]);
 
 
 buildDirectory = env["BUILDDIR"] + "/" + env["mode"]
