@@ -18,6 +18,7 @@ opts = Variables()
 opts.Add(PathVariable("PREFIX", "Directory to install under", "/usr/local", PathVariable.PathIsDirCreate))
 opts.Add(PathVariable("DESTDIR", "Destination root directory", "", PathVariable.PathAccept))
 opts.Add(EnumVariable("mode", "Compilation mode", "release", allowed_values=("release", "debug", "profile")))
+opts.Add(EnumVariable("opengl", "Whether to use OpenGL or OpenGL ES", "desktop", allowed_values=("desktop", "gles")))
 opts.Add(PathVariable("BUILDDIR", "Build directory", "build", PathVariable.PathIsDirCreate))
 opts.Update(env)
 
@@ -32,18 +33,30 @@ if env["mode"] == "profile":
 	flags += ["-pg"]
 	env.Append(LINKFLAGS = ["-pg"])
 
-# Required build flags. If you want to use SSE optimization, you can turn on
-# -msse3 or (if just building for your own computer) -march=native.
-env.Append(CCFLAGS = flags)
 env.Append(LIBS = [
 	"SDL2",
 	"png",
 	"jpeg",
-	"GL",
-	"GLEW",
 	"openal",
 	"pthread"
 ]);
+
+if env["opengl"] == "desktop":
+	env.Append(LIBS = [
+		"GL",
+		"GLEW"
+	]);
+else:
+	env.Append(LIBS = [
+		"GLESv2"
+	]);
+	flags += ["-DES_GLES"]
+
+
+# Required build flags. If you want to use SSE optimization, you can turn on
+# -msse3 or (if just building for your own computer) -march=native.
+env.Append(CCFLAGS = flags)
+
 # libmad is not in the Steam runtime, so link it statically:
 if 'SCHROOT_CHROOT_NAME' in os.environ and 'steamrt_scout_i386' in os.environ['SCHROOT_CHROOT_NAME']:
 	env.Append(LIBS = File("/usr/lib/i386-linux-gnu/libmad.a"))
