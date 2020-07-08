@@ -20,15 +20,14 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include <windows.h>
 #endif
 
-#include <sys/stat.h>
-#include <dirent.h>
-#include <unistd.h>
-
 #include <cstdlib>
+#include <dirent.h>
 #include <fstream>
 #include <iostream>
 #include <mutex>
 #include <stdexcept>
+#include <sys/stat.h>
+#include <unistd.h>
 
 using namespace std;
 
@@ -97,8 +96,12 @@ void Files::Init(const char * const *argv)
 			config = *it;
 			
 	}
-	
-	if(resources.empty())
+#ifdef __EMSCRIPTEN__
+	config = "/";
+	resources = "/";
+#endif
+
+	if (resources.empty())
 	{
 		// Find the path to the resource directory. This will depend on the
 		// operating system, and can be overridden by a command line argument.
