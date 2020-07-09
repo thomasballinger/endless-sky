@@ -34,6 +34,7 @@ if 'steamrt' in chroot_name:
 opts = Variables()
 opts.AddVariables(
 	EnumVariable("mode", "Compilation mode", "release", allowed_values=("release", "debug", "profile")),
+	EnumVariable("threads", "Whether to use threads", "on", allowed_values=("on", "off")),
 	PathVariable("BUILDDIR", "Directory to store compiled object files in", "build", PathVariable.PathIsDirCreate),
 	PathVariable("BIN_DIR", "Directory to store binaries in", ".", PathVariable.PathIsDirCreate),
 	PathVariable("DESTDIR", "Destination root directory, e.g. if building a package", "", PathVariable.PathAccept),
@@ -80,7 +81,6 @@ game_libs = [
 	"GL",
 	"GLEW",
 	"openal",
-	"pthread",
 ]
 env.Append(LIBS = game_libs)
 
@@ -91,6 +91,13 @@ elif 'steamrt_scout_amd64' in chroot_name:
 	env.Append(LIBS = File("/usr/lib/x86_64-linux-gnu/libmad.a"))
 else:
 	env.Append(LIBS = "mad")
+
+if env["threads"] == "off":
+	flags += ["-DES_NO_THREADS"]
+else:
+	env.Append(LIBS = [
+		"pthread"
+	]);
 
 
 binDirectory = '' if env["BIN_DIR"] == '.' else pathjoin(env["BIN_DIR"], env["mode"])
