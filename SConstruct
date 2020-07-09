@@ -20,6 +20,7 @@ opts.Add(PathVariable("DESTDIR", "Destination root directory", "", PathVariable.
 opts.Add(EnumVariable("mode", "Compilation mode", "release", allowed_values=("release", "debug", "profile")))
 opts.Add(EnumVariable("opengl", "Whether to use OpenGL or OpenGL ES", "desktop", allowed_values=("desktop", "gles")))
 opts.Add(EnumVariable("audio", "Whether to use audio", "on", allowed_values=("on", "off")))
+opts.Add(EnumVariable("threads", "Whether to use threads", "on", allowed_values=("on", "off")))
 opts.Add(PathVariable("BUILDDIR", "Build directory", "build", PathVariable.PathIsDirCreate))
 opts.Update(env)
 
@@ -37,12 +38,18 @@ if env["mode"] == "profile":
 env.Append(LIBS = [
 	"SDL2",
 	"png",
-	"jpeg",
-	"pthread"
+	"jpeg"
 ]);
 
 if env["audio"] == "off":
 	flags += ["-DES_NO_AUDIO"]
+
+if env["threads"] == "off":
+	flags += ["-DES_NO_THREADS"]
+else:
+	env.Append(LIBS = [
+		"pthread"
+	]);
 
 if env["opengl"] == "desktop":
 	env.Append(LIBS = [
