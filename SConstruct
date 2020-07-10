@@ -17,7 +17,7 @@ if 'SCHROOT_CHROOT_NAME' in os.environ and 'steamrt' in os.environ['SCHROOT_CHRO
 opts = Variables()
 opts.Add(PathVariable("PREFIX", "Directory to install under", "/usr/local", PathVariable.PathIsDirCreate))
 opts.Add(PathVariable("DESTDIR", "Destination root directory", "", PathVariable.PathAccept))
-opts.Add(EnumVariable("mode", "Compilation mode", "release", allowed_values=("release", "debug", "profile")))
+opts.Add(EnumVariable("mode", "Compilation mode", "release", allowed_values=("release", "debug", "profile", "emcc")))
 opts.Add(EnumVariable("opengl", "Whether to use OpenGL or OpenGL ES", "desktop", allowed_values=("desktop", "gles")))
 opts.Add(EnumVariable("audio", "Whether to use audio", "on", allowed_values=("on", "off")))
 opts.Add(EnumVariable("threads", "Whether to use threads", "on", allowed_values=("on", "off")))
@@ -27,6 +27,7 @@ opts.Update(env)
 Help(opts.GenerateHelpText(env))
 
 flags = ["-std=c++11", "-Wall"]
+common_flags = [""]
 if env["mode"] != "debug":
 	flags += ["-O3"]
 if env["mode"] == "debug":
@@ -34,12 +35,50 @@ if env["mode"] == "debug":
 if env["mode"] == "profile":
 	flags += ["-pg"]
 	env.Append(LINKFLAGS = ["-pg"])
+if env["mode"] == "emcc":
+	if env["audio"] != "off":
+		print("emcc requires audio=off")
+		Exit(1)
+	if env["opengl"] != "gles":
+		print("emcc requires opengl=gles")
+		Exit(1)
+	flags += ["-g4"]
+	env['CXX'] = "em++"
+	common_flags += [
+		"-s", "DISABLE_EXCEPTION_CATCHING=0",
+		"-s", "USE_SDL=2",
+		"-s", "USE_LIBPNG=1",
+		"-s", "USE_LIBJPEG=1",
+		"-s", "USE_WEBGL2=1",
+		"-s", "ASSERTIONS=2",
+		"-s", "DEMANGLE_SUPPORT=1",
+		"-s", "GL_ASSERTIONS=1",
+		"-s", "MIN_WEBGL_VERSION=2",
+		"-s", "EMULATE_FUNCTION_POINTER_CASTS=1",
+		"-s", "FETCH=1"
+	]
+	env.Append(LINKFLAGS = [
+		"--source-map-base", "http://localhost:6931/",
+		"-s", "WASM_MEM_MAX=2147483648", # 2GB
+		"-s", "INITIAL_MEMORY=838860800", # 800MB
+		"-s", "ALLOW_MEMORY_GROWTH=1",
+		"--preload-file", "data",
+		"--preload-file", "images",
+		"--embed-file", "dummy@sounds/dummy",
+		"--preload-file", "credits.txt",
+		"--preload-file", "keys.txt",
+		"--preload-file", "recent.txt",
+		"--preload-file", "saves",
+		"--emrun",
+		"-g4"
+	])
 
-env.Append(LIBS = [
-	"SDL2",
-	"png",
-	"jpeg"
-]);
+if env["mode"] != "emcc":
+	env.Append(LIBS = [
+		"SDL2",
+		"png",
+		"jpeg"
+	]);
 
 if env["audio"] == "off":
 	flags += ["-DES_NO_AUDIO"]
@@ -66,6 +105,9 @@ else:
 # Required build flags. If you want to use SSE optimization, you can turn on
 # -msse3 or (if just building for your own computer) -march=native.
 env.Append(CCFLAGS = flags)
+env.Append(CCFLAGS = common_flags)
+env.Append(LINKFLAGS = common_flags)
+
 
 if env["audio"] == "on":
 	# libmad is not in the Steam runtime, so link it statically:
@@ -92,6 +134,10 @@ def RecursiveGlob(pattern, dir_name=buildDirectory):
 	matches += Glob(str(dir_name) + "/" + pattern)
 	return matches
 
+outname = "endless-sky"
+if env["mode"] == "emcc":
+    outname += ".html"
+sky = env.Program(outname, RecursiveGlob("*.cpp", buildDirectory))
 sky = env.Program("endless-sky", RecursiveGlob("*.cpp", buildDirectory))
 
 
