@@ -42,6 +42,9 @@ if env["mode"] == "emcc":
 	if env["opengl"] != "gles":
 		print("emcc requires opengl=gles")
 		Exit(1)
+	if env["threads"] != "off":
+		print("emcc requires threads=off")
+		Exit(1)
 	flags += ["-g4"]
 	env['CXX'] = "em++"
 	common_flags += [
@@ -68,7 +71,7 @@ if env["mode"] == "emcc":
 		"--preload-file", "credits.txt",
 		"--preload-file", "keys.txt",
 		"--preload-file", "recent.txt",
-		"--preload-file", "saves",
+		"--preload-file", "dummy@saves/dummy",
 		"--emrun",
 		"-g4"
 	])
