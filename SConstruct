@@ -129,7 +129,6 @@ if env["mode"] == "emcc":
 		"--preload-file", "credits.txt",
 		"--preload-file", "keys.txt",
 		"--preload-file", "recent.txt",
-		"--preload-file", "dummy@saves/dummy",
 		"--emrun",
 		"-g4"
 	])
