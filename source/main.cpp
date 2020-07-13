@@ -5,7 +5,8 @@ Main function for Endless Sky, a space exploration and combat RPG.
 
 Endless Sky is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software
-Foundation, either version 3 of the License, or (at your option) any later version.
+Foundation, either version 3 of the License, or (at your option) any later
+version.
 
 Endless Sky is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
@@ -59,6 +60,17 @@ void InitConsole();
 // Entry point for the EndlessSky executable
 int main(int argc, char* argv[])
 {
+#ifdef __EMSCRIPTEN__
+    EM_ASM(FS.mkdir('/saves'); FS.mount(IDBFS, {}, '/saves');
+
+           // sync from persisted state into memory and then
+           // run the 'test' function
+           FS.syncfs(
+               true, function(err) {
+                   assert(!err);
+				   console.log("IndexedDB loaded!");
+               }););
+#endif
     // Handle command-line arguments
 #ifdef _WIN32
     if (argc > 1)
@@ -160,7 +172,8 @@ struct context
     bool isPaused = false;
     bool isFastForward = false;
 
-    // If fast forwarding, keep track of whether the current frame should be drawn.
+    // If fast forwarding, keep track of whether the current frame should be
+    // drawn.
     int skipFrame = 0;
 
     // Limit how quickly full-screen mode can be toggled.
@@ -319,7 +332,8 @@ void GameLoop(PlayerInfo& player, Conversation& conversation, bool& debugMode)
     }
 #endif
 
-    // If player quit while landed on a planet, save the game if there are changes.
+    // If player quit while landed on a planet, save the game if there are
+    // changes.
     if (player.GetPlanet() && gamePanels.CanSave())
         player.Save();
 }
@@ -335,8 +349,12 @@ void PrintHelp()
     cerr << "    -t, --talk: read and display a conversation from STDIN." << endl;
     cerr << "    -r, --resources <path>: load resources from given directory." << endl;
     cerr << "    -c, --config <path>: save user's files to given directory." << endl;
-    cerr << "    -d, --debug: turn on debugging features (e.g. Caps Lock slows down instead of speeds up)." << endl;
-    cerr << "    -p, --parse-save: load the most recent saved game and inspect it for content errors" << endl;
+    cerr << "    -d, --debug: turn on debugging features (e.g. Caps Lock slows "
+            "down instead of speeds up)."
+         << endl;
+    cerr << "    -p, --parse-save: load the most recent saved game and inspect "
+            "it for content errors"
+         << endl;
     cerr << endl;
     cerr << "Report bugs to: <https://github.com/endless-sky/endless-sky/issues>" << endl;
     cerr << "Home page: <https://endless-sky.github.io>" << endl;
@@ -347,7 +365,9 @@ void PrintVersion()
 {
     cerr << endl;
     cerr << "Endless Sky 0.9.13-alpha" << endl;
-    cerr << "License GPLv3+: GNU GPL version 3 or later: <https://gnu.org/licenses/gpl.html>" << endl;
+    cerr << "License GPLv3+: GNU GPL version 3 or later: "
+            "<https://gnu.org/licenses/gpl.html>"
+         << endl;
     cerr << "This is free software: you are free to change and redistribute it." << endl;
     cerr << "There is NO WARRANTY, to the extent permitted by law." << endl;
     cerr << endl;
@@ -390,7 +410,8 @@ void InitConsole()
     bool redirectStderr = _fileno(stderr) == UNINITIALIZED;
     bool redirectStdin = _fileno(stdin) == UNINITIALIZED;
 
-    // Bail if stdin, stdout, and stderr are already initialized (e.g. writing to a file)
+    // Bail if stdin, stdout, and stderr are already initialized (e.g. writing to
+    // a file)
     if (!redirectStdout && !redirectStderr && !redirectStdin)
         return;
 

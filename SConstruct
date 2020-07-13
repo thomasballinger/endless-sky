@@ -72,7 +72,7 @@ if env["mode"] == "emcc":
 		"--preload-file", "credits.txt",
 		"--preload-file", "keys.txt",
 		"--preload-file", "recent.txt",
-		"--preload-file", "dummy@saves/dummy",
+		#"--preload-file", "dummy@saves/dummy",
 		"--emrun",
 		"-g4"
 	])
@@ -82,6 +82,10 @@ if env["mode"] != "emcc":
 		"SDL2",
 		"png",
 		"jpeg"
+	]);
+else:
+	env.Append(LIBS = [
+		"idbfs.js"
 	]);
 
 if env["audio"] == "off":
