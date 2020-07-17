@@ -19,7 +19,7 @@ opts.Add(PathVariable("PREFIX", "Directory to install under", "/usr/local", Path
 opts.Add(PathVariable("DESTDIR", "Destination root directory", "", PathVariable.PathAccept))
 opts.Add(EnumVariable("mode", "Compilation mode", "release", allowed_values=("release", "debug", "profile", "emcc")))
 opts.Add(EnumVariable("opengl", "Whether to use OpenGL or OpenGL ES", "desktop", allowed_values=("desktop", "gles")))
-opts.Add(EnumVariable("audio", "Whether to use audio", "on", allowed_values=("on", "off")))
+opts.Add(EnumVariable("music", "Whether to use music", "on", allowed_values=("on", "off")))
 opts.Add(EnumVariable("threads", "Whether to use threads", "on", allowed_values=("on", "off")))
 opts.Add(PathVariable("BUILDDIR", "Build directory", "build", PathVariable.PathIsDirCreate))
 opts.Update(env)
@@ -36,8 +36,8 @@ if env["mode"] == "profile":
 	flags += ["-pg"]
 	env.Append(LINKFLAGS = ["-pg"])
 if env["mode"] == "emcc":
-	if env["audio"] != "off":
-		print("emcc requires audio=off")
+	if env["music"] != "off":
+		print("emcc requires music=off")
 		Exit(1)
 	if env["opengl"] != "gles":
 		print("emcc requires opengl=gles")
@@ -68,7 +68,7 @@ if env["mode"] == "emcc":
 		"-s", "ALLOW_MEMORY_GROWTH=1",
 		"--preload-file", "data",
 		"--preload-file", "images",
-		"--embed-file", "dummy@sounds/dummy",
+		"--preload-file", "sounds",
 		"--preload-file", "credits.txt",
 		"--preload-file", "keys.txt",
 		"--preload-file", "recent.txt",
@@ -76,20 +76,24 @@ if env["mode"] == "emcc":
 		"--emrun",
 		"-g4"
 	])
+	env.Append(LIBS = [
+		"openal"
+	]);
 
 if env["mode"] != "emcc":
 	env.Append(LIBS = [
 		"SDL2",
 		"png",
-		"jpeg"
+		"jpeg",
+		"openal"
 	]);
 else:
 	env.Append(LIBS = [
 		"idbfs.js"
 	]);
 
-if env["audio"] == "off":
-	flags += ["-DES_NO_AUDIO"]
+if env["music"] == "off":
+	flags += ["-DES_NO_MUSIC"]
 
 if env["threads"] == "off":
 	flags += ["-DES_NO_THREADS"]
@@ -117,7 +121,7 @@ env.Append(CCFLAGS = common_flags)
 env.Append(LINKFLAGS = common_flags)
 
 
-if env["audio"] == "on":
+if env["music"] == "on":
 	# libmad is not in the Steam runtime, so link it statically:
 	if 'SCHROOT_CHROOT_NAME' in os.environ and 'steamrt_scout_i386' in os.environ['SCHROOT_CHROOT_NAME']:
 		env.Append(LIBS = File("/usr/lib/i386-linux-gnu/libmad.a"))
@@ -125,9 +129,6 @@ if env["audio"] == "on":
 		env.Append(LIBS = File("/usr/lib/x86_64-linux-gnu/libmad.a"))
 	else:
 		env.Append(LIBS = "mad")
-	env.Append(LIBS = [
-		"openal"
-	]);
 
 
 buildDirectory = env["BUILDDIR"] + "/" + env["mode"]
