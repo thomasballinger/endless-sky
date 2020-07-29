@@ -85,6 +85,7 @@ if env["mode"] != "emcc":
 		"SDL2",
 		"png",
 		"jpeg",
+		"webp",
 		"openal"
 	]);
 else:
