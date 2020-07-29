@@ -286,8 +286,26 @@ void GameData::CheckReferences()
 
 void GameData::LoadShaders()
 {
-	FontSet::Add(Files::Images() + "font/ubuntu14r.webp", 14);
-	FontSet::Add(Files::Images() + "font/ubuntu18r.webp", 18);
+	std::string font_small_path;
+	std::string font_large_path;
+	if (Files::Exists(Files::Images() + "font/ubuntu14r.webp"))
+	{
+		font_small_path = Files::Images() + "font/ubuntu14r.webp";
+	}
+	else
+	{
+		font_small_path = Files::Images() + "font/ubuntu14r.png";
+	}
+	if (Files::Exists(Files::Images() + "font/ubuntu18r.webp"))
+	{
+		font_large_path = Files::Images() + "font/ubuntu18r.webp";
+	}
+	else
+	{
+		font_large_path = Files::Images() + "font/ubuntu18r.png";
+	}
+	FontSet::Add(font_small_path, 14);
+	FontSet::Add(font_large_path, 18);
 
 	// Load the key settings.
 	Command::LoadSettings(Files::Resources() + "keys.txt");
