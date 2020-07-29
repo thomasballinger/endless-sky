@@ -16,6 +16,10 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 #include <png.h>
 #include <jpeglib.h>
+#include <webp/decode.h>
+#include <strings.h>
+#include <string.h>
+#include <memory>
 
 #include <cstdio>
 #include <vector>
@@ -25,9 +29,32 @@ using namespace std;
 namespace {
 	bool ReadPNG(const string &path, ImageBuffer &buffer, int frame);
 	bool ReadJPG(const string &path, ImageBuffer &buffer, int frame);
+	bool ReadWEBP(const string &path, ImageBuffer &buffer, int frame);
 	void Premultiply(ImageBuffer &buffer, int frame, int additive);
-}
+	int Compare(const char *a, const char *b, bool caseSensitive)
+	{
+		if (a == nullptr || b == nullptr)
+			return false;
 
+		if (caseSensitive)
+		{
+			return strcmp(a, b);
+		}
+		else
+		{
+			return strcasecmp(a, b);
+		}
+	}
+	bool EndsWith(const std::string &str, const std::string &match, bool caseSensitive = true)
+	{
+		if (str.size() >= match.size())
+		{
+			auto start = str.c_str() + str.size() - match.size();
+			return Compare(start, match.c_str(), caseSensitive) == 0;
+		}
+		return false;
+	}
+}
 
 
 ImageBuffer::ImageBuffer(int frames)
@@ -152,20 +179,25 @@ bool ImageBuffer::Read(const string &path, int frame)
 	if(path.length() < 4)
 		return false;
 	
-	string extension = path.substr(path.length() - 4);
-	bool isPNG = (extension == ".png" || extension == ".PNG");
-	bool isJPG = (extension == ".jpg" || extension == ".JPG");
-	if(!isPNG && !isJPG)
+	bool isPNG = EndsWith(path, ".png", false);
+	bool isJPG = EndsWith(path, ".jpg", false);
+	bool isWEBP = EndsWith(path, ".webp", false);
+	if(!isPNG && !isJPG && !isWEBP)
+	{
+		printf("%s is invalid\n", path.c_str());
 		return false;
-	
+	}
+
 	if(isPNG && !ReadPNG(path, *this, frame))
 		return false;
 	if(isJPG && !ReadJPG(path, *this, frame))
 		return false;
-	
+	if(isWEBP && !ReadWEBP(path, *this, frame))
+		return false;
+
 	// Check if the sprite uses additive blending. Start by getting the index of
 	// the last character before the frame number (if one is specified).
-	int pos = path.length() - 4;
+	int pos = path.rfind(".");
 	if(pos > 3 && !path.compare(pos - 3, 3, "@2x"))
 		pos -= 3;
 	while(--pos)
@@ -176,7 +208,7 @@ bool ImageBuffer::Read(const string &path, int frame)
 	if(path[pos] != '=')
 	{
 		int additive = (path[pos] == '+') ? 2 : (path[pos] == '~') ? 1 : 0;
-		if(isPNG || (isJPG && additive == 2))
+		if(isPNG || isWEBP || (isJPG && additive == 2))
 			Premultiply(*this, frame, additive);
 	}
 	return true;
@@ -315,7 +347,45 @@ namespace {
 		return true;
 	}
 	
-	
+	bool ReadWEBP(const string &path, ImageBuffer &buffer, int frame)
+	{
+		File file(path);
+		if (!file)
+			return false;
+
+		FILE* f = file;
+		fseek(f, 0, SEEK_END);
+		size_t file_size = ftell(f);
+		fseek(f, 0, SEEK_SET);
+		auto tmpbuf = std::vector<uint8_t>(file_size);
+		auto elems_read = fread(tmpbuf.data(), file_size, 1, f);
+		if (elems_read != 1)
+		{
+			return false;
+		}
+		int width, height;
+		if (!WebPGetInfo(tmpbuf.data(), tmpbuf.size(), &width, &height))
+		{
+			return false;
+		}
+
+		buffer.Allocate(width, height);
+		// Make sure this frame's dimensions are valid.
+		if (!width || !height || width != buffer.Width() || height != buffer.Height())
+		{
+			return false;
+		}
+
+		auto decoded = WebPDecodeRGBAInto(
+			tmpbuf.data(), tmpbuf.size(), (uint8_t*)buffer.Begin(0, frame), width * height * 4, width * 4);
+
+		if (decoded == nullptr)
+		{
+			return false;
+		}
+
+		return true;
+	}
 	
 	void Premultiply(ImageBuffer &buffer, int frame, int additive)
 	{

@@ -28,9 +28,9 @@ namespace {
 	// Get the character index where the sprite name in the given path ends.
 	size_t NameEnd(const string &path)
 	{
-		// The path always ends in a three-letter extension, ".png" or ".jpg".
+		// The path always ends in a three or four letter extension, ".png" or ".jpg".
 		// In addition, 3 more characters may be taken up by an @2x label.
-		size_t end = path.length() - (ImageSet::Is2x(path) ? 7 : 4);
+		size_t end = path.rfind(".") - (ImageSet::Is2x(path) ? 3 : 0);
 		// This should never happen, but just in case:
 		if(!end)
 			return 0;
@@ -55,8 +55,8 @@ bool ImageSet::IsImage(const string &path)
 	if(path.length() < 4)
 		return false;
 	
-	string ext = path.substr(path.length() - 4);
-	return (ext == ".png" || ext == ".jpg" || ext == ".PNG" || ext == ".JPG");
+	const string ext = path.substr(path.rfind("."));
+	return (ext == ".png" || ext == ".jpg" || ext == ".PNG" || ext == ".JPG" || ext == ".webp" || ext == ".WEBP");
 }
 
 
@@ -99,8 +99,8 @@ bool ImageSet::Is2x(const string &path)
 	if(path.length() < 7)
 		return false;
 	
-	size_t pos = path.length() - 7;
-	return (path[pos] == '@' && path[pos + 1] == '2' && path[pos + 2] == 'x');
+	size_t pos = path.rfind(".");
+	return path.compare(pos - 3, 3, "@2x") == 0;
 }
 
 

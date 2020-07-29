@@ -304,8 +304,8 @@ void GameData::CheckReferences()
 
 void GameData::LoadShaders(bool useShaderSwizzle)
 {
-	FontSet::Add(Files::Images() + "font/ubuntu14r.png", 14);
-	FontSet::Add(Files::Images() + "font/ubuntu18r.png", 18);
+	FontSet::Add(Files::Images() + "font/ubuntu14r.webp", 14);
+	FontSet::Add(Files::Images() + "font/ubuntu18r.webp", 18);
 	
 	// Load the key settings.
 	Command::LoadSettings(Files::Resources() + "keys.txt");
