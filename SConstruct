@@ -88,9 +88,9 @@ game_libs = [
 	"jpeg",
 	"openal",
 	"webp",
+	"webpdemux",
 ] if env["mode"] != "emcc" else [
 	"openal",
-	"webp",
 ]
 env.Append(LIBS = game_libs)
 

@@ -17,6 +17,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include <png.h>
 #include <jpeglib.h>
 #include <webp/decode.h>
+#include <webp/demux.h>
 #include <strings.h>
 #include <string.h>
 #include <memory>
@@ -363,11 +364,18 @@ namespace {
 		{
 			return false;
 		}
-		int width, height;
-		if (!WebPGetInfo(tmpbuf.data(), tmpbuf.size(), &width, &height))
-		{
-			return false;
-		}
+		// WebPMux* WebPMuxCreate(const WebPData* bitstream, int copy_data);
+		WebPData bitstream = {
+			.bytes = tmpbuf.data(),
+			.size = file_size,
+		};
+		// TODO: mark this as unique_ptr
+		WebPDemuxer* demux = WebPDemux(&bitstream);
+		uint32_t width = WebPDemuxGetI(demux, WEBP_FF_CANVAS_WIDTH);
+		uint32_t height = WebPDemuxGetI(demux, WEBP_FF_CANVAS_HEIGHT);
+		uint32_t flags = WebPDemuxGetI(demux, WEBP_FF_FORMAT_FLAGS);
+		uint32_t frame_count = WebPDemuxGetI(demux, WEBP_FF_FRAME_COUNT);
+		buffer.Clear(frame_count);
 
 		buffer.Allocate(width, height);
 		// Make sure this frame's dimensions are valid.
@@ -376,13 +384,24 @@ namespace {
 			return false;
 		}
 
-		auto decoded = WebPDecodeRGBAInto(
-			tmpbuf.data(), tmpbuf.size(), (uint8_t*)buffer.Begin(0, frame), width * height * 4, width * 4);
-
-		if (decoded == nullptr)
+		WebPIterator iter;
+		if (WebPDemuxGetFrame(demux, 1, &iter))
 		{
-			return false;
+			do
+			{
+				auto decoded = WebPDecodeRGBAInto(
+					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, frame), width * height * 4,
+					width * 4);
+
+				if (decoded == nullptr)
+				{
+					return false;
+				}
+			} while (WebPDemuxNextFrame(&iter));
+			// TODO: convert to unique_ptr
+			WebPDemuxReleaseIterator(&iter);
 		}
+		WebPDemuxDelete(demux);
 
 		return true;
 	}

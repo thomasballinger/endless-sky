@@ -74,7 +74,7 @@ string ImageSet::Name(const string &path)
 int ImageSet::FrameIndex(const string &path)
 {
 	// Get the character index where the "name" portion of the path ends.
-	// A path's format is always: <name>(<blend><frame>)(@2x).(png|jpg)
+	// A path's format is always: <name>(<blend><frame>|<animated>)(@2x).(png|jpg|webp)
 	size_t i = NameEnd(path);
 	
 	// If the name contains a frame index, it must be separated from the name
@@ -191,6 +191,8 @@ void ImageSet::Check() const
 // worker threads. This also generates collision masks if needed.
 void ImageSet::Load()
 {
+	// todo(janis): determine if the first path is animated. If it is, extract frame count from path
+
 	// Determine how many frames there will be, total. The image buffers will
 	// not actually be allocated until the first image is loaded (at which point
 	// the sprite's dimensions will be known).
@@ -203,6 +205,7 @@ void ImageSet::Load()
 	if(makeMasks)
 		masks.resize(frames);
 	
+	// todo(janis): if is animated, populate all he frames from single file
 	// Load the 1x sprites first, then the 2x sprites, because they are likely
 	// to be in separate locations on the disk. Create masks if needed.
 	for(size_t i = 0; i < frames; ++i)
