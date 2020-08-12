@@ -86,6 +86,7 @@ if env["mode"] != "emcc":
 		"png",
 		"jpeg",
 		"webp",
+		"webpdemux",
 		"openal"
 	]);
 else:
