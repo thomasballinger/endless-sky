@@ -39,9 +39,9 @@ public:
 	// image buffer; subsequent calls will be ignored.
 	void Allocate(int width, int height);
 
-	int Width() const;
-	int Height() const;
-	int Frames() const;
+	uint32_t Width() const;
+	uint32_t Height() const;
+	uint32_t Frames() const;
 
 	const uint32_t *Pixels() const;
 	uint32_t *Pixels();
@@ -57,9 +57,9 @@ public:
 
 
 private:
-	int width;
-	int height;
-	int frames;
+	uint32_t width;
+	uint32_t height;
+	uint32_t frames;
 	uint32_t *pixels;
 };
 

@@ -98,21 +98,21 @@ void ImageBuffer::Allocate(int width, int height)
 
 
 
-int ImageBuffer::Width() const
+uint32_t ImageBuffer::Width() const
 {
 	return width;
 }
 
 
 
-int ImageBuffer::Height() const
+uint32_t ImageBuffer::Height() const
 {
 	return height;
 }
 
 
 
-int ImageBuffer::Frames() const
+uint32_t ImageBuffer::Frames() const
 {
 	return frames;
 }
@@ -155,7 +155,7 @@ void ImageBuffer::ShrinkToHalfSize()
 	unsigned char *begin = reinterpret_cast<unsigned char *>(pixels);
 	unsigned char *out = reinterpret_cast<unsigned char *>(result.pixels);
 	// Loop through every line of every frame of the buffer.
-	for(int y = 0; y < result.height * frames; ++y)
+	for(uint32_t y = 0; y < result.height * frames; ++y)
 	{
 		unsigned char *aIt = begin + (4 * width) * (2 * y);
 		unsigned char *aEnd = aIt + 4 * 2 * result.width;
@@ -215,27 +215,28 @@ bool ImageBuffer::Read(const string& path, int frame)
     return true;
 }
 
-namespace {
-	bool ReadPNG(const string &path, ImageBuffer &buffer, int frame)
+namespace
+{
+	bool ReadPNG(const string& path, ImageBuffer& buffer, int frame)
 	{
 		// Open the file, and make sure it really is a PNG.
 		File file(path);
-		if(!file)
+		if (!file)
 			return false;
 
 		// Set up libpng.
-		png_struct *png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-		if(!png)
+		png_struct* png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+		if (!png)
 			return false;
 
-		png_info *info = png_create_info_struct(png);
-		if(!info)
+		png_info* info = png_create_info_struct(png);
+		if (!info)
 		{
 			png_destroy_read_struct(&png, nullptr, nullptr);
 			return false;
 		}
 
-		if(setjmp(png_jmpbuf(png)))
+		if (setjmp(png_jmpbuf(png)))
 		{
 			png_destroy_read_struct(&png, &info, nullptr);
 			return false;
@@ -245,12 +246,12 @@ namespace {
 		png_set_sig_bytes(png, 0);
 
 		png_read_info(png, info);
-		int width = png_get_image_width(png, info);
-		int height = png_get_image_height(png, info);
+		uint32_t width = png_get_image_width(png, info);
+		uint32_t height = png_get_image_height(png, info);
 		// If the buffer is not yet allocated, allocate it.
 		buffer.Allocate(width, height);
 		// Make sure this frame's dimensions are valid.
-		if(!width || !height || width != buffer.Width() || height != buffer.Height())
+		if (!width || !height || width != buffer.Width() || height != buffer.Height())
 		{
 			png_destroy_read_struct(&png, &info, nullptr);
 			return false;
@@ -262,20 +263,20 @@ namespace {
 
 		png_set_strip_16(png);
 		png_set_packing(png);
-		if(colorType == PNG_COLOR_TYPE_PALETTE)
+		if (colorType == PNG_COLOR_TYPE_PALETTE)
 			png_set_palette_to_rgb(png);
-		if(colorType == PNG_COLOR_TYPE_GRAY && bitDepth < 8)
+		if (colorType == PNG_COLOR_TYPE_GRAY && bitDepth < 8)
 			png_set_expand_gray_1_2_4_to_8(png);
-		if(colorType == PNG_COLOR_TYPE_GRAY || colorType == PNG_COLOR_TYPE_GRAY_ALPHA)
+		if (colorType == PNG_COLOR_TYPE_GRAY || colorType == PNG_COLOR_TYPE_GRAY_ALPHA)
 			png_set_gray_to_rgb(png);
 		// Let libpng handle any interlaced image decoding.
 		png_set_interlace_handling(png);
 		png_read_update_info(png, info);
 
 		// Read the file.
-		vector<png_byte *> rows(height, nullptr);
-		for(int y = 0; y < height; ++y)
-			rows[y] = reinterpret_cast<png_byte *>(buffer.Begin(y, frame));
+		vector<png_byte*> rows(height, nullptr);
+		for (uint32_t y = 0; y < height; ++y)
+			rows[y] = reinterpret_cast<png_byte*>(buffer.Begin(y, frame));
 
 		png_read_image(png, &rows.front());
 
@@ -285,12 +286,10 @@ namespace {
 		return true;
 	}
 
-
-
-	bool ReadJPG(const string &path, ImageBuffer &buffer, int frame)
+	bool ReadJPG(const string& path, ImageBuffer& buffer, int frame)
 	{
 		File file(path);
-		if(!file)
+		if (!file)
 			return false;
 
 
@@ -304,12 +303,12 @@ namespace {
 		cinfo.out_color_space = JCS_RGB;
 
 		jpeg_start_decompress(&cinfo);
-		int width = cinfo.image_width;
-		int height = cinfo.image_height;
+		uint32_t width = cinfo.image_width;
+		uint32_t height = cinfo.image_height;
 		// If the buffer is not yet allocated, allocate it.
 		buffer.Allocate(width, height);
 		// Make sure this frame's dimensions are valid.
-		if(!width || !height || width != buffer.Width() || height != buffer.Height())
+		if (!width || !height || width != buffer.Width() || height != buffer.Height())
 		{
 			jpeg_finish_decompress(&cinfo);
 			jpeg_destroy_decompress(&cinfo);
@@ -317,11 +316,11 @@ namespace {
 		}
 
 		// Read the file.
-		vector<JSAMPLE *> rows(height, nullptr);
-		for(int y = 0; y < height; ++y)
-			rows[y] = reinterpret_cast<JSAMPLE *>(buffer.Begin(y, frame));
+		vector<JSAMPLE*> rows(height, nullptr);
+		for (uint32_t y = 0; y < height; ++y)
+			rows[y] = reinterpret_cast<JSAMPLE*>(buffer.Begin(y, frame));
 
-		while(height)
+		while (height)
 			height -= jpeg_read_scanlines(&cinfo, &rows.front() + cinfo.output_scanline, height);
 
 		jpeg_finish_decompress(&cinfo);
@@ -386,8 +385,7 @@ namespace {
 			do
 			{
 				auto decoded = WebPDecodeRGBAInto(
-					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, frame), width * height * 4,
-					width * 4);
+					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, frame), width * height * 4, width * 4);
 
 				if (decoded == nullptr)
 				{
@@ -404,7 +402,7 @@ namespace {
 
 	void Premultiply(ImageBuffer& buffer, int frame, int additive)
 	{
-		for (int y = 0; y < buffer.Height(); ++y)
+		for (uint32_t y = 0; y < buffer.Height(); ++y)
 		{
 			uint32_t* it = buffer.Begin(y, frame);
 
@@ -427,4 +425,4 @@ namespace {
 			}
 		}
 	}
-}
+} // namespace
