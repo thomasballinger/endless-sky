@@ -36,8 +36,8 @@ namespace {
 		// This is where we will store the point:
 		Point point;
 		
-		for(int y = 0; y < image.Height(); ++y)
-			for(int x = 0; x < image.Width(); ++x)
+		for(uint32_t y = 0; y < image.Height(); ++y)
+			for(uint32_t x = 0; x < image.Width(); ++x)
 			{
 				// If this pixel is occupied, bail out of both loops.
 				if(*it & on)
