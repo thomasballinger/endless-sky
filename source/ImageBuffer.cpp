@@ -292,7 +292,6 @@ namespace
 		if (!file)
 			return false;
 
-
 		jpeg_decompress_struct cinfo;
 		struct jpeg_error_mgr jerr;
 		cinfo.err = jpeg_std_error(&jerr);
@@ -330,8 +329,8 @@ namespace
 		for (unsigned int y = 0; y < cinfo.image_height; y++)
 		{
 			auto pptr = reinterpret_cast<uint8_t*>(buffer.Begin(y, frame));
-			for(int idx = width - 1; idx >= 0; --idx)
-			//for(int idx = 0; idx < width; ++idx)
+			for (int idx = width - 1; idx >= 0; --idx)
+			// for(int idx = 0; idx < width; ++idx)
 			{
 				pptr[idx * 4 + 0] = pptr[idx * 3 + 0];
 				pptr[idx * 4 + 1] = pptr[idx * 3 + 1];
@@ -345,6 +344,7 @@ namespace
 
 	bool ReadWEBP(const string& path, ImageBuffer& buffer, int frame)
 	{
+		printf("Trying to read webp image %s\n", path.c_str());
 		File file(path);
 		if (!file)
 			return false;
@@ -364,12 +364,14 @@ namespace
 			.bytes = tmpbuf.data(),
 			.size = file_size,
 		};
-		// TODO: mark this as unique_ptr
-		WebPDemuxer* demux = WebPDemux(&bitstream);
-		uint32_t width = WebPDemuxGetI(demux, WEBP_FF_CANVAS_WIDTH);
-		uint32_t height = WebPDemuxGetI(demux, WEBP_FF_CANVAS_HEIGHT);
-		uint32_t flags = WebPDemuxGetI(demux, WEBP_FF_FORMAT_FLAGS);
-		uint32_t frame_count = WebPDemuxGetI(demux, WEBP_FF_FRAME_COUNT);
+
+		auto webp_deleter = [](WebPDemuxer* demux) { WebPDemuxDelete(demux); };
+		std::unique_ptr<WebPDemuxer, decltype(webp_deleter)> demux(WebPDemux(&bitstream), webp_deleter);
+		uint32_t width = WebPDemuxGetI(demux.get(), WEBP_FF_CANVAS_WIDTH);
+		uint32_t height = WebPDemuxGetI(demux.get(), WEBP_FF_CANVAS_HEIGHT);
+		uint32_t flags = WebPDemuxGetI(demux.get(), WEBP_FF_FORMAT_FLAGS);
+		uint32_t frame_count = WebPDemuxGetI(demux.get(), WEBP_FF_FRAME_COUNT);
+		printf("The image has %u frames and is %ux%u sized\n", frame_count, width, height);
 		buffer.Clear(frame_count);
 
 		buffer.Allocate(width, height);
@@ -380,22 +382,23 @@ namespace
 		}
 
 		WebPIterator iter;
-		if (WebPDemuxGetFrame(demux, 1, &iter))
+		if (WebPDemuxGetFrame(demux.get(), 1, &iter))
 		{
+			auto iter_deleter_lambda = [](WebPIterator* iter) { WebPDemuxReleaseIterator(iter); };
+			std::unique_ptr<WebPIterator, decltype(iter_deleter_lambda)> iter_deleter(&iter, iter_deleter_lambda);
 			do
 			{
+				printf("Decoding frame %d out of %d\n", iter.frame_num + 1, frame_count);
 				auto decoded = WebPDecodeRGBAInto(
-					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, frame), width * height * 4, width * 4);
+					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, iter.frame_num), width * height * 4, width * 4);
 
 				if (decoded == nullptr)
 				{
+					printf("Bad stuff happened!\n");
 					return false;
 				}
 			} while (WebPDemuxNextFrame(&iter));
-			// TODO: convert to unique_ptr
-			WebPDemuxReleaseIterator(&iter);
 		}
-		WebPDemuxDelete(demux);
 
 		return true;
 	}
