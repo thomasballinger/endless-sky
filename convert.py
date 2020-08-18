@@ -24,5 +24,9 @@ to_mux = {}
 for webp_path in webp_files:
     matches = re.finditer(regex, webp_path, re.MULTILINE)
     for matchNum, match in enumerate(matches, start=1):
-        if to_mux[match.group(1)]:
-            to_mux[match.group(1)] = [].extend(to_mux[match.group(1)]).append(webp_path)
+        my_list = []
+        if match.group(1) in to_mux:
+            to_mux[match.group(1)].append(webp_path)
+        else:
+            my_list.append(webp_path)
+            to_mux[match.group(1)] = my_list
