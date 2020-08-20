@@ -29,10 +29,10 @@ using namespace std;
 
 namespace
 {
-    bool ReadPNG(const string& path, ImageBuffer& buffer, int frame);
-    bool ReadJPG(const string& path, ImageBuffer& buffer, int frame);
-    bool ReadWEBP(const string& path, ImageBuffer& buffer, int frame);
-    void Premultiply(ImageBuffer& buffer, int frame, int additive);
+    bool ReadPNG(const string& path, ImageBuffer& buffer, uint32_t frame);
+    bool ReadJPG(const string& path, ImageBuffer& buffer, uint32_t frame);
+    bool ReadWEBP(const string& path, ImageBuffer& buffer, uint32_t frame);
+    void Premultiply(ImageBuffer& buffer, uint32_t frame, int additive);
     int Compare(const char* a, const char* b, bool caseSensitive)
     {
         if (a == nullptr || b == nullptr)
@@ -58,7 +58,7 @@ namespace
     }
 } // namespace
 
-ImageBuffer::ImageBuffer(int frames)
+ImageBuffer::ImageBuffer(uint32_t frames)
 	: width(0), height(0), frames(frames), pixels(nullptr)
 {
 }
@@ -73,7 +73,7 @@ ImageBuffer::~ImageBuffer()
 
 
 // Set the number of frames. This must be called before allocating.
-void ImageBuffer::Clear(int frames)
+void ImageBuffer::Clear(uint32_t frames)
 {
 	delete [] pixels;
 	pixels = nullptr;
@@ -84,7 +84,7 @@ void ImageBuffer::Clear(int frames)
 
 // Allocate the internal buffer. This must only be called once for each
 // image buffer; subsequent calls will be ignored.
-void ImageBuffer::Allocate(int width, int height)
+void ImageBuffer::Allocate(uint32_t width, uint32_t height)
 {
 	// Do nothing if the buffer is already allocated or if any of the dimensions
 	// is set to zero.
@@ -133,14 +133,14 @@ uint32_t *ImageBuffer::Pixels()
 
 
 
-const uint32_t *ImageBuffer::Begin(int y, int frame) const
+const uint32_t *ImageBuffer::Begin(uint32_t y, uint32_t frame) const
 {
 	return pixels + width * (y + height * frame);
 }
 
 
 
-uint32_t *ImageBuffer::Begin(int y, int frame)
+uint32_t *ImageBuffer::Begin(uint32_t y, uint32_t frame)
 {
 	return pixels + width * (y + height * frame);
 }
@@ -172,7 +172,7 @@ void ImageBuffer::ShrinkToHalfSize()
 	swap(pixels, result.pixels);
 }
 
-bool ImageBuffer::Read(const string& path, int frame)
+bool ImageBuffer::Read(const string& path, uint32_t frame)
 {
     // First, make sure this is a JPG or PNG file.
     if (path.length() < 4)
@@ -217,7 +217,7 @@ bool ImageBuffer::Read(const string& path, int frame)
 
 namespace
 {
-	bool ReadPNG(const string& path, ImageBuffer& buffer, int frame)
+	bool ReadPNG(const string& path, ImageBuffer& buffer, uint32_t frame)
 	{
 		// Open the file, and make sure it really is a PNG.
 		File file(path);
@@ -286,7 +286,7 @@ namespace
 		return true;
 	}
 
-	bool ReadJPG(const string& path, ImageBuffer& buffer, int frame)
+	bool ReadJPG(const string& path, ImageBuffer& buffer, uint32_t frame)
 	{
 		File file(path);
 		if (!file)
@@ -342,7 +342,7 @@ namespace
 		return true;
 	}
 
-	bool ReadWEBP(const string& path, ImageBuffer& buffer, int frame)
+	bool ReadWEBP(const string& path, ImageBuffer& buffer, uint32_t frame)
 	{
 		printf("Trying to read webp image %s\n", path.c_str());
 		File file(path);
@@ -372,7 +372,9 @@ namespace
 		uint32_t flags = WebPDemuxGetI(demux.get(), WEBP_FF_FORMAT_FLAGS);
 		uint32_t frame_count = WebPDemuxGetI(demux.get(), WEBP_FF_FRAME_COUNT);
 		printf("The image has %u frames and is %ux%u sized\n", frame_count, width, height);
-		buffer.Clear(frame_count);
+		if (frame_count > 1) {
+			buffer.Clear(frame_count);
+		}
 
 		buffer.Allocate(width, height);
 		// Make sure this frame's dimensions are valid.
@@ -388,9 +390,9 @@ namespace
 			std::unique_ptr<WebPIterator, decltype(iter_deleter_lambda)> iter_deleter(&iter, iter_deleter_lambda);
 			do
 			{
-				printf("Decoding frame %d out of %d\n", iter.frame_num + 1, frame_count);
+				printf("Decoding frame %d out of %d\n", iter.frame_num, frame_count);
 				auto decoded = WebPDecodeRGBAInto(
-					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, iter.frame_num), width * height * 4, width * 4);
+					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, iter.frame_num - 1), width * height * 4, width * 4);
 
 				if (decoded == nullptr)
 				{
@@ -403,7 +405,7 @@ namespace
 		return true;
 	}
 
-	void Premultiply(ImageBuffer& buffer, int frame, int additive)
+	void Premultiply(ImageBuffer& buffer, uint32_t frame, int additive)
 	{
 		for (uint32_t y = 0; y < buffer.Height(); ++y)
 		{
