@@ -396,9 +396,13 @@ namespace {
 			std::unique_ptr<WebPIterator, decltype(iter_deleter_lambda)> iter_deleter(&iter, iter_deleter_lambda);
 			do
 			{
-				printf("Decoding frame %d out of %d\n", iter.frame_num, frame_count);
+				auto frame_num = frame;
+				if (frame_count > 1)
+				{
+					frame_num = iter.frame_num;
+				}
 				auto decoded = WebPDecodeRGBAInto(
-					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, iter.frame_num - 1), width * height * 4, width * 4);
+					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, frame_num), width * height * 4, width * 4);
 
 				if (decoded == nullptr)
 				{
