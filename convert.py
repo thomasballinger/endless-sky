@@ -2,6 +2,7 @@ import glob
 import subprocess
 import re
 import os
+import shutil
 
 files = glob.glob("images/**/*.png", recursive=True)
 processed = 0
@@ -10,18 +11,12 @@ count = len(files)
 print(f'found {count} files')
 pad_len = len(str(count))
 
-for png_path in files:
-    processed = processed + 1
-    print(f'processing file {str(processed).rjust(pad_len)} of {count}, {str(int(processed * 100 / count)).rjust(3)}%: {png_path}')
-    webp_path = png_path.replace(".png", ".webp")
-    #subprocess.run(["cwebp", png_path, "-o", webp_path, "-lossless", "-m", "6"])
-
-    # TODO: once converted the animation frames should be muxed
-
-webp_files = sorted(glob.glob("images/**/*.webp", recursive=True))
+webp_output_directory = "webp"
+webp_files = sorted(glob.glob(webp_output_directory + "/" + "images/**/*.webp", recursive=True))
 regex = r"(.*?)([+~-])([0-9]+)\.webp"
 to_mux = {}
-output_directory = "animated"
+animated_output_directory = "animated"
+complete_output_directory = "complete"
 """
 FRAME_OPTIONS(i):
  Create animation:
@@ -49,10 +44,20 @@ typedef enum WebPMuxAnimBlend {
 """
 frame_options = "+1+0+0+1"
 
+for png_path in files:
+    processed = processed + 1
+    print(f'processing file {str(processed).rjust(pad_len)} of {count}, {str(int(processed * 100 / count)).rjust(3)}%: {png_path}')
+    webp_path = webp_output_directory + "/" + png_path.replace(".png", ".webp")
+    os.makedirs(os.path.dirname(webp_path), exist_ok=True)
+    #subprocess.run(["cwebp", png_path, "-o", webp_path, "-lossless", "-m", "6"])
+
+complete_files = webp_files
+
 for webp_path in webp_files:
     matches = re.finditer(regex, webp_path, re.MULTILINE)
     for matchNum, match in enumerate(matches, start=1):
         my_list = []
+        complete_files.remove(webp_path)
         if match.group(1) in to_mux:
             to_mux[match.group(1)].append(webp_path)
         else:
@@ -64,6 +69,12 @@ for webp_mux in to_mux:
     for webp_file in to_mux[webp_mux]:
         command.extend(["-frame", webp_file, frame_options])
     matches = re.match(regex, to_mux[webp_mux][0])
-    command.extend(["-o", webp_mux + matches.group(2) + str(len(to_mux[webp_mux])) + ".webp"])
-    os.makedirs(os.path.dirname(output_directory + "/" + to_mux[webp_mux][0]), exist_ok=True)
-    print(command)
+    animated_file = animated_output_directory + "/" + webp_mux + matches.group(2) + str(len(to_mux[webp_mux]) - 1) + ".webp"
+    command.extend(["-o", animated_file])
+    complete_files.append(animated_file)
+    os.makedirs(os.path.dirname(animated_output_directory + "/" + to_mux[webp_mux][0]), exist_ok=True)
+    subprocess.run(command)
+
+for f in complete_files:
+    os.makedirs(os.path.dirname(complete_output_directory + "/" + f), exist_ok=True)
+    shutil.copyfile(f, complete_output_directory + "/" + f)
