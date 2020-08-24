@@ -51,7 +51,7 @@ for png_path in files:
     os.makedirs(os.path.dirname(webp_path), exist_ok=True)
     #subprocess.run(["cwebp", png_path, "-o", webp_path, "-lossless", "-m", "6"])
 
-complete_files = webp_files
+complete_files = webp_files.copy()
 
 for webp_path in webp_files:
     matches = re.finditer(regex, webp_path, re.MULTILINE)
