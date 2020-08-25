@@ -202,8 +202,16 @@ void ImageSet::Load()
 	// Load the 1x sprites first, then the 2x sprites, because they are likely
 	// to be in separate locations on the disk. Create masks if needed.
 	for(size_t i = 0; i < frames; ++i)
-		if(buffer[0].Read(paths[0][i], i) && makeMasks)
+		buffer[0].Read(paths[0][i], i);
+
+	// Postpone creating masks in case there were animated assets
+	if (makeMasks) {
+		for(size_t i = 0; i < frames; ++i) {
+			printf("path = %s, i = %zu\n", paths[0][i].c_str(), i);
 			masks[i].Create(buffer[0], i);
+		}
+	}
+
 	// Now, load the 2x sprites, if they exist. Because the number of 1x frames
 	// is definitive, don't load any frames beyond the size of the 1x list.
 	for(size_t i = 0; i < frames && i < paths[1].size(); ++i)
