@@ -12,7 +12,6 @@ print(f'found {count} files')
 pad_len = len(str(count))
 
 webp_output_directory = "webp"
-webp_files = sorted(glob.glob(webp_output_directory + "/" + "images/**/*.webp", recursive=True))
 regex = r"(.*?)([+~-])([0-9]+)\.webp"
 to_mux = {}
 animated_output_directory = "animated"
@@ -49,8 +48,9 @@ for png_path in files:
     print(f'processing file {str(processed).rjust(pad_len)} of {count}, {str(int(processed * 100 / count)).rjust(3)}%: {png_path}')
     webp_path = webp_output_directory + "/" + png_path.replace(".png", ".webp")
     os.makedirs(os.path.dirname(webp_path), exist_ok=True)
-    #subprocess.run(["cwebp", png_path, "-o", webp_path, "-lossless", "-m", "6"])
+    #subprocess.run(["cwebp", png_path, "-o", webp_path, "-lossless", "-exact", "-m", "6"])
 
+webp_files = sorted(glob.glob(webp_output_directory + "/" + "images/**/*.webp", recursive=True))
 complete_files = webp_files.copy()
 
 for webp_path in webp_files:
