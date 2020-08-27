@@ -28,9 +28,9 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 using namespace std;
 
 namespace {
-	bool ReadPNG(const string &path, ImageBuffer &buffer, uint32_t frame);
-	bool ReadJPG(const string &path, ImageBuffer &buffer, uint32_t frame);
-	bool ReadWEBP(const string &path, ImageBuffer &buffer, uint32_t frame);
+	std::vector<bool> ReadPNG(const string &path, ImageBuffer &buffer, uint32_t frame);
+	std::vector<bool> ReadJPG(const string &path, ImageBuffer &buffer, uint32_t frame);
+	std::vector<bool> ReadWEBP(const string &path, ImageBuffer &buffer, uint32_t frame);
 	void Premultiply(ImageBuffer &buffer, uint32_t frame, int additive);
 	int Compare(const char *a, const char *b, bool caseSensitive)
 	{
@@ -189,12 +189,22 @@ bool ImageBuffer::Read(const string &path, uint32_t frame)
 		return false;
 	}
 
-	if(isPNG && !ReadPNG(path, *this, frame))
-		return false;
-	if(isJPG && !ReadJPG(path, *this, frame))
-		return false;
-	if(isWEBP && !ReadWEBP(path, *this, frame))
-		return false;
+	std::vector<bool> loaded_frames;
+	if(isPNG)
+		loaded_frames = ReadPNG(path, *this, frame);
+	if (isJPG)
+		loaded_frames = ReadJPG(path, *this, frame);
+	if (isWEBP)
+		loaded_frames = ReadWEBP(path, *this, frame);
+	bool all_loaded = true;
+	for (const auto& frame : loaded_frames)
+	{
+		if (!frame)
+		{
+			all_loaded = false;
+			break;
+		}
+	}
 
 	// Check if the sprite uses additive blending. Start by getting the index of
 	// the last character before the frame number (if one is specified).
@@ -210,37 +220,50 @@ bool ImageBuffer::Read(const string &path, uint32_t frame)
 	{
 		int additive = (path[pos] == '+') ? 2 : (path[pos] == '~') ? 1 : 0;
 		if(isPNG || isWEBP || (isJPG && additive == 2))
-			Premultiply(*this, frame, additive);
+		{
+			for (auto frame_idx = 0u; frame_idx < loaded_frames.size(); frame_idx++)
+			{
+				if (loaded_frames[frame_idx])
+				{
+					Premultiply(*this, frame_idx, additive);
+				}
+			}
+		}
 	}
+
+	// Only report error after processing all the loaded frames
+	if(!all_loaded)
+	{
+		return false;
+	}
+
 	return true;
 }
 
-
-
 namespace {
-	bool ReadPNG(const string &path, ImageBuffer &buffer, uint32_t frame)
+	std::vector<bool> ReadPNG(const string &path, ImageBuffer &buffer, uint32_t frame)
 	{
 		// Open the file, and make sure it really is a PNG.
 		File file(path);
 		if(!file)
-			return false;
+			return {};
 		
 		// Set up libpng.
 		png_struct *png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
 		if(!png)
-			return false;
+			return {};
 		
 		png_info *info = png_create_info_struct(png);
 		if(!info)
 		{
 			png_destroy_read_struct(&png, nullptr, nullptr);
-			return false;
+			return {};
 		}
 		
 		if(setjmp(png_jmpbuf(png)))
 		{
 			png_destroy_read_struct(&png, &info, nullptr);
-			return false;
+			return {};
 		}
 		
 		png_init_io(png, file);
@@ -255,7 +278,7 @@ namespace {
 		if(!width || !height || width != buffer.Width() || height != buffer.Height())
 		{
 			png_destroy_read_struct(&png, &info, nullptr);
-			return false;
+			return {};
 		}
 		
 		// Adjust settings to make sure the result will be a BGRA file.
@@ -284,16 +307,16 @@ namespace {
 		// Clean up. The file will be closed automatically.
 		png_destroy_read_struct(&png, &info, nullptr);
 		
-		return true;
+		return {true};
 	}
 	
 	
 	
-	bool ReadJPG(const string &path, ImageBuffer &buffer, uint32_t frame)
+	std::vector<bool> ReadJPG(const string &path, ImageBuffer &buffer, uint32_t frame)
 	{
 		File file(path);
 		if(!file)
-			return false;
+			return {};
 		
 		jpeg_decompress_struct cinfo;
 		struct jpeg_error_mgr jerr;
@@ -317,7 +340,7 @@ namespace {
 		{
 			jpeg_finish_decompress(&cinfo);
 			jpeg_destroy_decompress(&cinfo);
-			return false;
+			return {};
 		}
 		
 		// Read the file.
@@ -345,38 +368,41 @@ namespace {
 			}
 		}
 
-		return true;
+		return {true};
 	}
 	
-	bool ReadWEBP(const string &path, ImageBuffer &buffer, uint32_t frame)
+	std::vector<bool> ReadWEBP(const string &path, ImageBuffer &buffer, uint32_t frame)
 	{
 		printf("Trying to read webp image %s\n", path.c_str());
 		File file(path);
 		if (!file)
-			return false;
+			return {};
 
 		FILE* f = file;
 		fseek(f, 0, SEEK_END);
 		size_t file_size = ftell(f);
 		fseek(f, 0, SEEK_SET);
-		auto tmpbuf = std::vector<uint8_t>(file_size);
-		auto elems_read = fread(tmpbuf.data(), file_size, 1, f);
+		//auto tmpbuf = std::vector<uint8_t>(file_size);
+		auto tmpbuf = new uint8_t[file_size];
+		auto elems_read = fread(tmpbuf, file_size, 1, f);
 		if (elems_read != 1)
 		{
-			return false;
+			return {};
 		}
 		// WebPMux* WebPMuxCreate(const WebPData* bitstream, int copy_data);
 		WebPData bitstream = {
-			.bytes = tmpbuf.data(),
+			.bytes = tmpbuf,
 			.size = file_size,
 		};
 
-		auto webp_deleter = [](WebPDemuxer* demux) { WebPDemuxDelete(demux); };
-		std::unique_ptr<WebPDemuxer, decltype(webp_deleter)> demux(WebPDemux(&bitstream), webp_deleter);
-		uint32_t width = WebPDemuxGetI(demux.get(), WEBP_FF_CANVAS_WIDTH);
-		uint32_t height = WebPDemuxGetI(demux.get(), WEBP_FF_CANVAS_HEIGHT);
-		uint32_t flags = WebPDemuxGetI(demux.get(), WEBP_FF_FORMAT_FLAGS);
-		uint32_t frame_count = WebPDemuxGetI(demux.get(), WEBP_FF_FRAME_COUNT);
+		printf("creating demuxer\n");
+		//auto webp_deleter = [](WebPDemuxer* demux) { printf("releasing demuxer\n"); WebPDemuxDelete(demux); };
+		//std::unique_ptr<WebPDemuxer, decltype(webp_deleter)> demux(WebPDemux(&bitstream), webp_deleter);
+		WebPDemuxer* demux = WebPDemux(&bitstream);
+		uint32_t width = WebPDemuxGetI(demux, WEBP_FF_CANVAS_WIDTH);
+		uint32_t height = WebPDemuxGetI(demux, WEBP_FF_CANVAS_HEIGHT);
+		uint32_t flags = WebPDemuxGetI(demux, WEBP_FF_FORMAT_FLAGS);
+		uint32_t frame_count = WebPDemuxGetI(demux, WEBP_FF_FRAME_COUNT);
 		printf("The image has %u frames and is %ux%u sized\n", frame_count, width, height);
 		if (frame_count > 1) {
 			buffer.Clear(frame_count);
@@ -386,33 +412,43 @@ namespace {
 		// Make sure this frame's dimensions are valid.
 		if (!width || !height || width != buffer.Width() || height != buffer.Height())
 		{
-			return false;
+			return {};
 		}
 
+		std::vector<bool> result;
+		result.resize(frame_count, false);
 		WebPIterator iter;
-		if (WebPDemuxGetFrame(demux.get(), 1, &iter))
+		if (WebPDemuxGetFrame(demux, 1, &iter))
 		{
-			auto iter_deleter_lambda = [](WebPIterator* iter) { WebPDemuxReleaseIterator(iter); };
-			std::unique_ptr<WebPIterator, decltype(iter_deleter_lambda)> iter_deleter(&iter, iter_deleter_lambda);
+			//auto iter_deleter_lambda = [](WebPIterator* iter) { printf("releasing iterator\n"); WebPDemuxReleaseIterator(iter); };
+			//std::unique_ptr<WebPIterator, decltype(iter_deleter_lambda)> iter_deleter(&iter, iter_deleter_lambda);
 			do
 			{
 				auto frame_num = frame;
 				if (frame_count > 1)
 				{
-					frame_num = iter.frame_num;
+					frame_num = iter.frame_num - 1;
 				}
 				auto decoded = WebPDecodeRGBAInto(
 					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, frame_num), width * height * 4, width * 4);
+				//ok = (WebPDecode(curr->fragment.bytes, curr->fragment.size,
+				//	  config) == VP8_STATUS_OK);
+				result[frame_num] = decoded != nullptr;
 
 				if (decoded == nullptr)
 				{
 					printf("Bad stuff happened!\n");
-					return false;
+					return result;
 				}
-			} while (WebPDemuxNextFrame(&iter));
-		}
 
-		return true;
+			} while (WebPDemuxNextFrame(&iter));
+			WebPDemuxReleaseIterator(&iter);
+		}
+		printf("image decoded\n");
+		delete [] tmpbuf;
+		WebPDemuxDelete(demux);
+
+		return result;
 	}
 	
 	void Premultiply(ImageBuffer &buffer, uint32_t frame, int additive)
