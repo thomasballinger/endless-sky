@@ -25,13 +25,11 @@ namespace
 	// Trace out a pixmap.
 	void Trace(const ImageBuffer& image, uint32_t frame, vector<Point>* raw)
 	{
-		printf("image.Frames() = %u, frame = %u\n", image.Frames(), frame);
 		uint32_t on = 0xFF000000;
 		const uint32_t* begin = image.Pixels() + frame * image.Width() * image.Height();
 
 		// Convert the pitch to uint32_ts instead of bytes.
 		int pitch = image.Width();
-		printf("pitch = %d\n", pitch);
 
 		// First, find a non-empty pixel.
 		// This points to the current pixel.
@@ -76,10 +74,12 @@ namespace
 				next = point + step[d];
 				// Use padded comparisons in case errors somehow accumulate and
 				// the doubles are no longer canceling out to 0.
-				if ((next.X() >= -.5) & (next.Y() >= -.5) & (next.X() < maxX) & (next.Y() < maxY)) {
-
+				if ((next.X() >= -.5) & (next.Y() >= -.5) & (next.X() < maxX) & (next.Y() < maxY))
+				{
 					if (it[off[d]] & on)
+					{
 						break;
+					}
 				}
 
 				// Advance to the next direction.

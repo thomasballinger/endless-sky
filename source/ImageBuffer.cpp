@@ -399,14 +399,11 @@ namespace
 		};
 
 		printf("creating demuxer\n");
-		//auto webp_deleter = [](WebPDemuxer* demux) { printf("releasing demuxer\n"); WebPDemuxDelete(demux); };
-		//std::unique_ptr<WebPDemuxer, decltype(webp_deleter)> demux(WebPDemux(&bitstream), webp_deleter);
-		WebPDemuxer* demux = WebPDemux(&bitstream);
-		uint32_t width = WebPDemuxGetI(demux, WEBP_FF_CANVAS_WIDTH);
-		uint32_t height = WebPDemuxGetI(demux, WEBP_FF_CANVAS_HEIGHT);
-		uint32_t flags = WebPDemuxGetI(demux, WEBP_FF_FORMAT_FLAGS);
-		uint32_t frame_count = WebPDemuxGetI(demux, WEBP_FF_FRAME_COUNT);
-		printf("The image has %u frames and is %ux%u sized\n", frame_count, width, height);
+		auto webp_deleter = [](WebPDemuxer* demux) { WebPDemuxDelete(demux); };
+		std::unique_ptr<WebPDemuxer, decltype(webp_deleter)> demux(WebPDemux(&bitstream), webp_deleter);
+		uint32_t width = WebPDemuxGetI(demux.get(), WEBP_FF_CANVAS_WIDTH);
+		uint32_t height = WebPDemuxGetI(demux.get(), WEBP_FF_CANVAS_HEIGHT);
+		uint32_t frame_count = WebPDemuxGetI(demux.get(), WEBP_FF_FRAME_COUNT);
 		if (frame_count > 1) {
 			buffer.Clear(frame_count);
 		}
@@ -421,10 +418,10 @@ namespace
 		std::vector<bool> result;
 		result.resize(frame_count, false);
 		WebPIterator iter;
-		if (WebPDemuxGetFrame(demux, 1, &iter))
+		if (WebPDemuxGetFrame(demux.get(), 1, &iter))
 		{
-			//auto iter_deleter_lambda = [](WebPIterator* iter) { printf("releasing iterator\n"); WebPDemuxReleaseIterator(iter); };
-			//std::unique_ptr<WebPIterator, decltype(iter_deleter_lambda)> iter_deleter(&iter, iter_deleter_lambda);
+			auto iter_deleter_lambda = [](WebPIterator* iter) { WebPDemuxReleaseIterator(iter); };
+			std::unique_ptr<WebPIterator, decltype(iter_deleter_lambda)> iter_deleter(&iter, iter_deleter_lambda);
 			do
 			{
 				auto frame_num = frame;
@@ -434,8 +431,6 @@ namespace
 				}
 				auto decoded = WebPDecodeRGBAInto(
 					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, frame_num), width * height * 4, width * 4);
-				//ok = (WebPDecode(curr->fragment.bytes, curr->fragment.size,
-				//      config) == VP8_STATUS_OK);
 				result[frame_num] = decoded != nullptr;
 
 				if (decoded == nullptr)
@@ -447,9 +442,7 @@ namespace
 			} while (WebPDemuxNextFrame(&iter));
 			WebPDemuxReleaseIterator(&iter);
 		}
-		printf("image decoded\n");
 		delete [] tmpbuf;
-		WebPDemuxDelete(demux);
 
 		return result;
 	}

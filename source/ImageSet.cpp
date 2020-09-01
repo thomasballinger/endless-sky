@@ -178,8 +178,6 @@ void ImageSet::Check() const
 	}
 }
 
-
-
 // Load all the frames. This should be called in one of the image-loading
 // worker threads. This also generates collision masks if needed.
 void ImageSet::Load()
@@ -195,30 +193,29 @@ void ImageSet::Load()
 
 	// Check whether we need to generate collision masks.
 	bool makeMasks = IsMasked(name);
-	if(makeMasks)
+	if (makeMasks)
 		masks.resize(frames);
 
 	// todo(janis): if is animated, populate all he frames from single file
 	// Load the 1x sprites first, then the 2x sprites, because they are likely
 	// to be in separate locations on the disk. Create masks if needed.
-	for(size_t i = 0; i < frames; ++i)
+	for (size_t i = 0; i < frames; ++i)
 		buffer[0].Read(paths[0][i], i);
 
 	// Postpone creating masks in case there were animated assets
-	if (makeMasks) {
-		for(size_t i = 0; i < frames; ++i) {
-			printf("path = %s, i = %zu\n", paths[0][i].c_str(), i);
+	if (makeMasks)
+	{
+		for (size_t i = 0; i < frames; ++i)
+		{
 			masks[i].Create(buffer[0], i);
 		}
 	}
 
 	// Now, load the 2x sprites, if they exist. Because the number of 1x frames
 	// is definitive, don't load any frames beyond the size of the 1x list.
-	for(size_t i = 0; i < frames && i < paths[1].size(); ++i)
+	for (size_t i = 0; i < frames && i < paths[1].size(); ++i)
 		buffer[1].Read(paths[1][i], i);
 }
-
-
 
 // Create the sprite and upload the image data to the GPU. After this is
 // called, the internal image buffers and mask vector will be cleared, but
