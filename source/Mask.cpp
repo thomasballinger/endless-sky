@@ -24,13 +24,11 @@ namespace {
 	// Trace out a pixmap.
 	void Trace(const ImageBuffer &image, uint32_t frame, vector<Point> *raw)
 	{
-		printf("image.Frames() = %u, frame = %u\n", image.Frames(), frame);
 		uint32_t on = 0xFF000000;
 		const uint32_t *begin = image.Pixels() + frame * image.Width() * image.Height();
 		
 		// Convert the pitch to uint32_ts instead of bytes.
 		int pitch = image.Width();
-		printf("pitch = %d\n", pitch);
 		
 		// First, find a non-empty pixel.
 		// This points to the current pixel.

@@ -214,7 +214,6 @@ void ImageSet::Load()
 	// Postpone creating masks in case there were animated assets
 	if (makeMasks) {
 		for(size_t i = 0; i < frames; ++i) {
-			printf("path = %s, i = %zu\n", paths[0][i].c_str(), i);
 			masks[i].Create(buffer[0], i);
 		}
 	}
