@@ -95,7 +95,6 @@ void ImageBuffer::Allocate(uint32_t width, uint32_t height)
 	this->width = width;
 	this->height = height;
 	pixels = new uint32_t[width * height * frames];
-	std::fill(pixels, pixels + (width * height), 0);
 }
 
 
