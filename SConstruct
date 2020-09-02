@@ -26,7 +26,8 @@ opts.Update(env)
 
 Help(opts.GenerateHelpText(env))
 
-flags = ["-std=c++11", "-Wall"]
+flags = ["-Wall"]
+env.Append(CXXFLAGS = ["-std=c++11"])
 common_flags = [""]
 if env["mode"] != "debug":
 	flags += ["-O3"]
@@ -47,6 +48,9 @@ if env["mode"] == "emcc":
 		Exit(1)
 	flags += ["-g4"]
 	env['CXX'] = "em++"
+	env['CC'] = "emcc"
+	env['AR'] = "emar"
+	env['RANLIB'] = "emranlib"
 	common_flags += [
 		"-s", "DISABLE_EXCEPTION_CATCHING=0",
 		"-s", "USE_SDL=2",
@@ -77,22 +81,21 @@ if env["mode"] == "emcc":
 		"-g4"
 	])
 	env.Append(LIBS = [
-		"openal"
+		"idbfs.js"
 	]);
+
+env.Append(LIBS = [
+	"openal",
+	"webp",
+	"webpdemux",]);
 
 if env["mode"] != "emcc":
 	env.Append(LIBS = [
 		"SDL2",
 		"png",
 		"jpeg",
-		"webp",
-		"webpdemux",
-		"openal"
 	]);
-else:
-	env.Append(LIBS = [
-		"idbfs.js"
-	]);
+
 
 if env["music"] == "off":
 	flags += ["-DES_NO_MUSIC"]
@@ -145,11 +148,48 @@ def RecursiveGlob(pattern, dir_name=buildDirectory):
 	matches += Glob(str(dir_name) + "/" + pattern)
 	return matches
 
+env.Append(CPPPATH = ['libwebp/src', 'libwebp'])
+
+env.Library("webp", [
+	'libwebp/src/dec/alpha_dec.c',
+	'libwebp/src/dec/buffer_dec.c',
+	'libwebp/src/dec/frame_dec.c',
+	'libwebp/src/dec/idec_dec.c',
+	'libwebp/src/dec/io_dec.c',
+	'libwebp/src/dec/quant_dec.c',
+	'libwebp/src/dec/tree_dec.c',
+	'libwebp/src/dec/vp8_dec.c',
+	'libwebp/src/dec/vp8l_dec.c',
+	'libwebp/src/dec/webp_dec.c',
+
+	'libwebp/src/dsp/alpha_processing.c',
+	'libwebp/src/dsp/cpu.c',
+	'libwebp/src/dsp/dec.c',
+	'libwebp/src/dsp/dec_clip_tables.c',
+	'libwebp/src/dsp/filters.c',
+	'libwebp/src/dsp/lossless.c',
+	'libwebp/src/dsp/rescaler.c',
+	'libwebp/src/dsp/upsampling.c',
+	'libwebp/src/dsp/yuv.c',
+
+	'libwebp/src/utils/bit_reader_utils.c',
+	'libwebp/src/utils/color_cache_utils.c',
+	'libwebp/src/utils/filters_utils.c',
+	'libwebp/src/utils/huffman_utils.c',
+	'libwebp/src/utils/quant_levels_dec_utils.c',
+	'libwebp/src/utils/rescaler_utils.c',
+	'libwebp/src/utils/random_utils.c',
+	'libwebp/src/utils/thread_utils.c',
+	'libwebp/src/utils/utils.c',])
+
+env.Library("webpdemux", [
+	'libwebp/src/demux/demux.c',
+	'libwebp/src/demux/anim_decode.c',])
+
 outname = "endless-sky"
 if env["mode"] == "emcc":
     outname += ".html"
-sky = env.Program(outname, RecursiveGlob("*.cpp", buildDirectory))
-sky = env.Program("endless-sky", RecursiveGlob("*.cpp", buildDirectory))
+sky = env.Program(outname, RecursiveGlob("*.cpp", buildDirectory), LIBPATH='.')
 
 
 # Install the binary:
