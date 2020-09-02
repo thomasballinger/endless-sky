@@ -91,6 +91,8 @@ game_libs = [
 	"webpdemux",
 ] if env["mode"] != "emcc" else [
 	"openal",
+	"webp",
+	"webpdemux",
 ]
 env.Append(LIBS = game_libs)
 
@@ -194,6 +196,45 @@ def RecursiveGlob(pattern, dir_name=buildDirectory):
 	matches += Glob(pathjoin(str(dir_name), pattern), exclude=["*/main.cpp"])
 	return matches
 
+
+env.Append(CPPPATH = ['libwebp/src', 'libwebp'])
+
+env.Library("webp", [
+	'libwebp/src/dec/alpha_dec.c',
+	'libwebp/src/dec/buffer_dec.c',
+	'libwebp/src/dec/frame_dec.c',
+	'libwebp/src/dec/idec_dec.c',
+	'libwebp/src/dec/io_dec.c',
+	'libwebp/src/dec/quant_dec.c',
+	'libwebp/src/dec/tree_dec.c',
+	'libwebp/src/dec/vp8_dec.c',
+	'libwebp/src/dec/vp8l_dec.c',
+	'libwebp/src/dec/webp_dec.c',
+
+	'libwebp/src/dsp/alpha_processing.c',
+	'libwebp/src/dsp/cpu.c',
+	'libwebp/src/dsp/dec.c',
+	'libwebp/src/dsp/dec_clip_tables.c',
+	'libwebp/src/dsp/filters.c',
+	'libwebp/src/dsp/lossless.c',
+	'libwebp/src/dsp/rescaler.c',
+	'libwebp/src/dsp/upsampling.c',
+	'libwebp/src/dsp/yuv.c',
+
+	'libwebp/src/utils/bit_reader_utils.c',
+	'libwebp/src/utils/color_cache_utils.c',
+	'libwebp/src/utils/filters_utils.c',
+	'libwebp/src/utils/huffman_utils.c',
+	'libwebp/src/utils/quant_levels_dec_utils.c',
+	'libwebp/src/utils/rescaler_utils.c',
+	'libwebp/src/utils/random_utils.c',
+	'libwebp/src/utils/thread_utils.c',
+	'libwebp/src/utils/utils.c',])
+
+env.Library("webpdemux", [
+	'libwebp/src/demux/demux.c',
+	'libwebp/src/demux/anim_decode.c',])
+
 # By default, invoking scons will build the backing archive file and then the game binary.
 sourceLib = env.StaticLibrary(pathjoin(libDirectory, "endless-sky"), RecursiveGlob("*.cpp", buildDirectory))
 outname = "endless-sky"
@@ -203,7 +244,7 @@ exeObjs = [Glob(pathjoin(buildDirectory, f)) for f in ("main.cpp",)]
 if is_windows_host:
 	windows_icon = env.RES(pathjoin(buildDirectory, "WinApp.rc"))
 	exeObjs.append(windows_icon)
-sky = env.Program(pathjoin(binDirectory, outname), exeObjs + sourceLib)
+sky = env.Program(pathjoin(binDirectory, outname), exeObjs + sourceLib, LIBPATH=".")
 env.Default(sky)
 
 

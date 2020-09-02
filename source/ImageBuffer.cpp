@@ -373,7 +373,6 @@ namespace {
 	
 	std::vector<bool> ReadWEBP(const string &path, ImageBuffer &buffer, uint32_t frame)
 	{
-		printf("Trying to read webp image %s\n", path.c_str());
 		File file(path);
 		if (!file)
 			return {};
@@ -395,7 +394,6 @@ namespace {
 			.size = file_size,
 		};
 
-		printf("creating demuxer\n");
 		auto webp_deleter = [](WebPDemuxer* demux) { WebPDemuxDelete(demux); };
 		std::unique_ptr<WebPDemuxer, decltype(webp_deleter)> demux(WebPDemux(&bitstream), webp_deleter);
 		uint32_t width = WebPDemuxGetI(demux.get(), WEBP_FF_CANVAS_WIDTH);
@@ -432,7 +430,7 @@ namespace {
 
 				if (decoded == nullptr)
 				{
-					printf("Bad stuff happened!\n");
+					printf("Bad stuff happened! path = %s, frame = %u\n", path.c_str(), frame);
 					return result;
 				}
 
