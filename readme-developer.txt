@@ -130,6 +130,8 @@ Install Emscripten: follow instructions at https://emscripten.org/docs/getting_s
 
 Use the latest version (see instructions above) and source the emsdk_env.sh file so you can run commands like emcc, em++ and emrun.
 
+Download webp with `make -f WebpMakefile`.
+
 Now in the source code folder, run
 
   $ scons -j 8 mode=emcc music=off opengl=gles threads=off

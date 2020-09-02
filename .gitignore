@@ -11,6 +11,15 @@ libendless-sky.a
 # Files::LogError output from unit tests
 errors.txt
 
+# libwebp
+libwebp
+animated/
+libwebp.a
+libwebp.tar.gz
+libwebpdemux.a
+webp/
+webpimages/
+
 # Build Directories and toolchain-generated files
 build/
 obj/
