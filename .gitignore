@@ -24,6 +24,10 @@ Release/
 scons-local*
 .sconsign.dblite
 /*.d
+*.o
+title.png
+dataversion.js
+Ubuntu-Regular.ttf
 
 # Test Reports
 test-report.xml
