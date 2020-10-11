@@ -77,7 +77,7 @@ if env["mode"] == "emcc":
 		"--preload-file", "keys.txt",
 		"--preload-file", "recent.txt",
 		#"--preload-file", "dummy@saves/dummy",
-		"--emrun",
+		#"--emrun",  # useful in dev, but causes hundreds of errors in prod
 		"-g4"
 	])
 	env.Append(LIBS = [
@@ -191,6 +191,8 @@ if env["mode"] == "emcc":
     outname += ".html"
 sky = env.Program(outname, RecursiveGlob("*.cpp", buildDirectory), LIBPATH='.')
 
+if env["mode"] == "emcc":
+    env.Command("title.webp", "images/_menu/title.webp", Copy("$TARGET", "$SOURCE"))
 
 # Install the binary:
 env.Install("$DESTDIR$PREFIX/games", sky)
