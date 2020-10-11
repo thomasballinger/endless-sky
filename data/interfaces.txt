@@ -203,12 +203,9 @@ interface "load menu"
 		center -440 155
 		dimensions 80 30
 	active if "pilot selected"
-	button i "Import"
-		center -355 155
-		dimensions 80 30
 	button D "Delete"
-		center -270 155
-		dimensions 80 30
+ 		center -285 155
+ 		dimensions 90 30
 
 	active if "pilot alive"
 	button a "_Add Snapshot"

@@ -104,6 +104,12 @@
       <textarea id="output" rows="8"></textarea>
     </div>
 
+    <div class="upload-saves">
+      <input type="button" value="Upload save game files" onclick="document.querySelector('#file-selector').click();" />
+      <input type="file" style="display: none;" id="file-selector" multiple="multiple">
+      <button class="dismiss-upload">dismiss</button>
+    </div>
+
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 
     <script src="js/cached-resource.js"></script>
@@ -139,6 +145,20 @@
         // ignore errors about missing image frames
         if (/missing frame/.exec(text)) text = null;
       }
+      document.querySelector('#file-selector').addEventListener("change", async function() {
+        // write every file uploaded to the filesystem
+        for (const file of [...this.files]) {
+          const data = new Uint8Array(await file.arrayBuffer());
+          const path = 'saves/' + file.name;
+          const stream = FS.open(path, 'w+');
+          FS.write(stream, data, 0, data.length, 0);
+          FS.close(stream);
+        }
+      });
+      document.querySelector('.dismiss-upload').addEventListener('click', function() {
+        this.parentNode.style.display = 'none';
+      });
+
       var Module = {
           print: (function(text) {
               var element = document.getElementById('output');
