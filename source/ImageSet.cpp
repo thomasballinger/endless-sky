@@ -168,6 +168,11 @@ void ImageSet::Check() const
 		Files::LogError(prefix + to_string(paths[1].size() - paths[0].size())
 				+ " extra frames for the @2x sprite will be ignored.");
 
+    // TODO should be in an ifdef for webp formats?
+    std::string lastPath = paths[0][paths[0].size() - 1];
+    if (lastPath.size() > 5 && lastPath.compare(lastPath.size()-4,4,".webp")) {
+        return;  // webp files contain all frames in the last path
+    }
 	for(size_t i = 0; i < paths[0].size(); ++i)
 	{
 		if(paths[0][i].empty())
