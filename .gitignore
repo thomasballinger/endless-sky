@@ -18,6 +18,7 @@ Release/
 .sconsign.dblite
 /*.d
 *.o
+title.webp
 
 # User-installed plugins
 plugins/
