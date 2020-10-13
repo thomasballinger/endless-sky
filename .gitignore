@@ -19,6 +19,7 @@ Release/
 /*.d
 *.o
 title.webp
+dataversion.js
 
 # User-installed plugins
 plugins/
