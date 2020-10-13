@@ -17,6 +17,7 @@ Release/
 *.depend
 .sconsign.dblite
 /*.d
+*.o
 
 # User-installed plugins
 plugins/
