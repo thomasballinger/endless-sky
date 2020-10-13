@@ -24,7 +24,6 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 #include <cstdio>
 #include <vector>
-#include "sha1.hpp"
 
 using namespace std;
 
