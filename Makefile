@@ -1,6 +1,4 @@
 endless-sky.html:
-	rm -f libwebp/src/*/*.o
-	python -c 's = open("source/ImageBuffer.cpp").read().replace("""#include "sha1.hpp"\n""", ""); open("source/ImageBuffer.cpp", "w").write(s)'
 	CXXFLAGS="-DNO_AUDIO" scons -j 8 mode=emcc music=off opengl=gles threads=off
 clean:
 	rm endless-sky.html
