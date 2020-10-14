@@ -89,3 +89,22 @@ $ sudo install_name_tool -id "@rpath/libpng16.16.dylib" /usr/local/lib/libpng16.
 $ sudo install_name_tool -id "@rpath/libmad.0.2.1.dylib" /usr/local/lib/libmad.0.2.1.dylib
 $ sudo install_name_tool -id "@rpath/libturbojpeg.0.dylib" /usr/local/opt/libjpeg-turbo/lib/libturbojpeg.0.dylib
 $ sudo install_name_tool -id "@rpath/libSDL2-2.0.0.dylib" /usr/local/lib/libSDL2-2.0.0.dylib
+
+
+
+Building the web build
+
+Windows: ?
+
+Mac and Linux:
+
+Install scons with apt-get, yum, brew, etc. Unlike the setup instructions for the normal build on Mac above, you will need scons on Mac.
+
+Install Emscripten: follow instructions at https://emscripten.org/docs/getting_started/downloads.html
+
+Use the latest version (see instructions above) and source the emsdk_env.sh file so you can run commands like emcc, em++ and emrun.
+
+Now in the source code folder, run
+
+  $ CXXFLAGS="-DNO_AUDIO" scons -j 8 mode=emcc music=off opengl=gles threads=off
+  $ emrun --serve_after_close --serve_after_exit --browser chrome --private_browsing endless-sky.html
