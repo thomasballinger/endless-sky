@@ -106,5 +106,5 @@ Use the latest version (see instructions above) and source the emsdk_env.sh file
 
 Now in the source code folder, run
 
-  $ CXXFLAGS="-DNO_AUDIO" scons -j 8 mode=emcc music=off opengl=gles threads=off
+  $ scons -j 8 mode=emcc music=off opengl=gles threads=off
   $ emrun --serve_after_close --serve_after_exit --browser chrome --private_browsing endless-sky.html
