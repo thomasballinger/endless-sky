@@ -6,7 +6,9 @@ dev: endless-sky.js
 	emrun --serve_after_close --serve_after_exit --browser chrome --private_browsing endless-sky.html
 favicon.ico:
 	wget https://endless-sky.github.io/favicon.ico
-output/index.html: endless-sky.js endless-sky.html favicon.ico title.webp endless-sky.data
+Ubuntu-Regular.ttf:
+	curl -Ls 'https://github.com/google/fonts/blob/master/ufl/ubuntu/Ubuntu-Regular.ttf?raw=true' > Ubuntu-Regular.ttf
+output/index.html: endless-sky.js endless-sky.html favicon.ico title.webp endless-sky.data Ubuntu-Regular.ttf
 	rm -rf output
 	mkdir -p output
 	cp endless-sky.html output/index.html
@@ -15,6 +17,7 @@ output/index.html: endless-sky.js endless-sky.html favicon.ico title.webp endles
 	cp dataversion.js output/
 	cp title.webp output/
 	cp favicon.ico output/
+	cp Ubuntu-Regular.ttf output/
 test: output/index.html
 	cd output; (sleep 1; python3 -m webbrowser http://localhost:8000) & python -m http.server
 deploy: output/index.html
