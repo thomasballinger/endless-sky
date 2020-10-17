@@ -20,6 +20,7 @@ Release/
 *.o
 title.webp
 dataversion.js
+Ubuntu-Regular.ttf
 
 # User-installed plugins
 plugins/
