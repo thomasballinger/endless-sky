@@ -65,7 +65,6 @@ if env["mode"] == "emcc":
 		"-s", "FETCH=1"
 	]
 	env.Append(LINKFLAGS = [
-		"--shell-file", "es2.html",
 		"--source-map-base", "http://localhost:6931/",
 		"-s", "WASM_MEM_MAX=2147483648", # 2GB
 		"-s", "INITIAL_MEMORY=838860800", # 800MB
@@ -188,7 +187,7 @@ env.Library("webpdemux", [
 
 outname = "endless-sky"
 if env["mode"] == "emcc":
-    outname += ".html"
+    outname += ".js"
 sky = env.Program(outname, RecursiveGlob("*.cpp", buildDirectory), LIBPATH='.')
 
 if env["mode"] == "emcc":
