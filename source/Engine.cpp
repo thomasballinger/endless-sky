@@ -857,6 +857,8 @@ void Engine::Go()
 	}
 	condition.notify_all();
 #else
+	++step;
+	drawTickTock = !drawTickTock;
 	CalculateStep();
 	calcTickTock = drawTickTock;
 #endif // ES_NO_THREADS
