@@ -26,17 +26,21 @@
           width: 100%;
           min-height: 10%;
       }
+      .save-games {
+        display: flex;
+        flex-direction: column;
+      }
+      .download-button {
+        width: 100%
+      }
       .status {
-          background-color: hsl(60,20%,90%);
           text-align: center;
-          height: 0;
+          min-height: 1em;
       }
       #output {
-          background-color: hsla(240,10%,10%,0.0);
           color: black;
-          border: none;
           padding: 0 1em;
-          width: 50%;
+          width: 80%;
       }
       .loading {
         position: absolute;
@@ -85,6 +89,7 @@
         resize: horizontal;
         overflow: auto;
         display: none;
+        padding: 0 10px;
       }
     </style>
   </head>
@@ -99,15 +104,19 @@
     </div>
     <div class="debug">
       <h1>Debug panel</h1>
-      <p> press backslash to disable </p>
-      <div class="status">Downloading...</div>
-      <textarea id="output" rows="8"></textarea>
+      <p> press backslash to hide </p>
+      <input type="button" value="Upload save game files" onclick="document.querySelector('.file-selector').click();" />
+      <input type="button" class="show-save-games" value="Show save game files for download" />
+      <div class="save-games"></div>
+      <input type="file" style="display: none;" class="file-selector" multiple="multiple">
+      <div class="status">Status goes here</div>
+      <textarea id="output" rows="8">stdout output goes here</textarea>
     </div>
 
     <div class="upload-saves">
-      <input type="button" value="Upload save game files" onclick="document.querySelector('#file-selector').click();" />
-      <input type="file" style="display: none;" id="file-selector" multiple="multiple">
-      <button class="dismiss-upload">dismiss</button>
+      <input type="button" value="Upload save game files" onclick="document.querySelector('.file-selector').click();" />
+      <button class="toggle-debug">press \ for debug panel</button>
+      <button class="dismiss-upload">dismiss these buttons</button>
     </div>
 
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
@@ -115,17 +124,74 @@
     <script src="js/cached-resource.js"></script>
     <script src="dataversion.js"></script>
     <script type='text/javascript'>
+      function toggleDebugWindow() {
+        const debug = document.querySelector('.debug');
+        if (debug.style.display === 'none' || debug.style.display === '') {
+          debug.style.display = 'initial';
+        } else {
+          debug.style.display = 'none'
+          saveGamesList.innerHTML = ''
+        }
+      }
       window.addEventListener('keydown', (e) => {
         if (e.code === 'Backslash') {
           e.preventDefault();
-          const debug = document.querySelector('.debug');
-          if (debug.style.display === 'none' || debug.style.display === '') {
-            debug.style.display = 'initial';
-          } else {
-            debug.style.display = 'none'
-          }
+          toggleDebugWindow();
         }
       }, {capture: true})
+      document.querySelector('.toggle-debug').addEventListener('click', toggleDebugWindow);
+      const saveGamesList = document.querySelector('.save-games');
+      const showSaveGamesButton = document.querySelector('.show-save-games');
+      function timeDelta(seconds){
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor(seconds / 60);
+        const s = Math.ceil(seconds % 60)
+        if (h) return h > 1 ? `${h} hours ago` : `1 hour ago`;
+        if (m) return m > 1 ? `${m} minutes ago` : `1 minute ago`;
+        return s < 20 ? `just now` : `${s} seconds ago`;
+      }
+      function showSaveGames(){
+        const now = new Date();
+        const contents = FS.lookupPath('saves').node.contents
+        const files = Object.keys(contents).map(name => {
+          const path = `/saves/${name}`;
+          const mtime = FS.stat(path).mtime;
+          return {
+            name,
+            path: `/saves/${name}`,
+            mtime,
+            t: +mtime,
+            secondsAgo: Math.ceil((now - mtime) / 1000)
+          };
+        })
+        files.sort((a, b) => (a.secondsAgo - b.secondsAgo));
+
+        saveGamesList.innerHTML = ''
+        files.forEach(({name, path, secondsAgo}) => {
+          const button = document.createElement('button');
+          button.class = "download-button";
+          button.innerText = `${name} (saved ${timeDelta(secondsAgo)})`;
+          button.onclick = function offerFileAsDownload() {
+            const mime = "text/plain";
+            let content = FS.readFile(path);
+            console.log(`Offering download of "${path}", with ${content.length} bytes...`);
+
+            const a = document.createElement('a');
+            a.download = name;
+            a.href = URL.createObjectURL(new Blob([content], {type: mime}));
+            a.style.display = 'none';
+
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(a.href);
+            }, 10000);
+          }
+          saveGamesList.appendChild(button);
+        });
+      }
+      showSaveGamesButton.addEventListener('click', showSaveGames);
       const progressBar = document.querySelector('.progressBar');
       const progress = document.querySelector('.progress');
       const progressText = document.querySelector('.progress-text');
@@ -145,15 +211,17 @@
         // ignore errors about missing image frames
         if (/missing frame/.exec(text)) text = null;
       }
-      document.querySelector('#file-selector').addEventListener("change", async function() {
-        // write every file uploaded to the filesystem
-        for (const file of [...this.files]) {
-          const data = new Uint8Array(await file.arrayBuffer());
-          const path = 'saves/' + file.name;
-          const stream = FS.open(path, 'w+');
-          FS.write(stream, data, 0, data.length, 0);
-          FS.close(stream);
-        }
+      [...document.querySelectorAll('.file-selector')].map(el => {
+        el.addEventListener("change", async function() {
+          // write every file uploaded to the filesystem
+          for (const file of [...this.files]) {
+            const data = new Uint8Array(await file.arrayBuffer());
+            const path = 'saves/' + file.name;
+            const stream = FS.open(path, 'w+');
+            FS.write(stream, data, 0, data.length, 0);
+            FS.close(stream);
+          }
+        });
       });
       document.querySelector('.dismiss-upload').addEventListener('click', function() {
         this.parentNode.style.display = 'none';
@@ -162,7 +230,7 @@
       var Module = {
           print: (function(text) {
               var element = document.getElementById('output');
-              if (element) element.value = 'output goes here'; // clear browser cache
+              if (element) element.value = 'stdout output goes here'; // clear browser cache
               return function(text) {
                   if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
                   console.log(text);
