@@ -223,6 +223,9 @@
       const progressText = document.querySelector('.progress-text');
       function updateProgress(numerator, denominator, usingCache) {
         progress.style.width = `${numerator / denominator * 100}%`;
+        const soFar = (numerator / 1000000).toFixed(1);
+        const total = (denominator / 1000000).toFixed(1);
+        progressText.textContent = `Downloading data (${soFar}MB / ${total}MB)`
         if (numerator === denominator) {
           progress.style.transition = 'none';
           if (usingCache) {
