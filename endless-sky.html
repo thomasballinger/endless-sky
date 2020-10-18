@@ -247,6 +247,8 @@
             FS.write(stream, data, 0, data.length, 0);
             FS.close(stream);
           }
+          // syncfs(false) means save to IndexedDB
+          await new Promise((resolve) => FS.syncfs(false, resolve));
         });
       });
       document.querySelector('.dismiss-upload').addEventListener('click', function() {
