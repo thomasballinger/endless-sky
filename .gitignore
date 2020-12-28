@@ -25,9 +25,12 @@ scons-local*
 .sconsign.dblite
 /*.d
 *.o
+
+# emscripten build generated files
 title.png
 dataversion.js
 Ubuntu-Regular.ttf
+output
 
 # Test Reports
 test-report.xml
