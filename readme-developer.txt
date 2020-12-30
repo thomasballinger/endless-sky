@@ -126,11 +126,11 @@ Mac and Linux:
 
 Install scons with apt-get, yum, brew, etc. Unlike the setup instructions for the normal build on Mac above, you will need scons on Mac.
 
+Download webp with `make libwebp`
+
 Install Emscripten: follow instructions at https://emscripten.org/docs/getting_started/downloads.html
 
 Use the latest version (see instructions above) and source the emsdk_env.sh file so you can run commands like emcc, em++ and emrun.
-
-Download webp with `make -f WebpMakefile`.
 
 Now in the source code folder, run
 

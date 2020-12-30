@@ -131,7 +131,7 @@ if env["mode"] == "emcc":
 		"-s", "ALLOW_MEMORY_GROWTH=1",
 		"-s", "EXTRA_EXPORTED_RUNTIME_METHODS=['callMain']",
 		"--preload-file", "data",
-		"--preload-file", "images",
+		"--preload-file", "webpimages@images",
 		"--preload-file", "sounds",
 		"--preload-file", "credits.txt",
 		"--preload-file", "keys.txt",

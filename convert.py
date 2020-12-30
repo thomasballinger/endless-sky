@@ -2,11 +2,13 @@ import glob
 import subprocess
 import re
 import os
+import sys
 import shutil
+import itertools
 
-files = glob.glob("images/**/*.png", recursive=True)
+source_files = glob.glob("images/**/*.png", recursive=True)
 processed = 0
-count = len(files)
+count = len(source_files)
 
 print(f'found {count} files')
 pad_len = len(str(count))
@@ -43,12 +45,19 @@ typedef enum WebPMuxAnimBlend {
 """
 frame_options = "+1+0+0+1"
 
-for png_path in files:
+for png_path in source_files:
     processed = processed + 1
     print(f'processing file {str(processed).rjust(pad_len)} of {count}, {str(int(processed * 100 / count)).rjust(3)}%: {png_path}')
     webp_path = webp_output_directory + "/" + png_path.replace(".png", ".webp")
     os.makedirs(os.path.dirname(webp_path), exist_ok=True)
-    #subprocess.run(["cwebp", png_path, "-o", webp_path, "-lossless", "-exact", "-m", "6"])
+    if (os.path.exists(webp_path) and os.path.getmtime(webp_path) > os.path.getmtime(png_path)):
+        pass # skip
+    else:
+        subprocess.run(["cwebp", png_path, "-o", webp_path, "-lossless", "-exact", "-m", "6"])
+
+if not source_files:
+    print('PNG files in images appear to already be converted to webp.')
+    sys.exit()
 
 webp_files = sorted(glob.glob(webp_output_directory + "/" + "images/**/*.webp", recursive=True))
 complete_files = webp_files.copy()
@@ -78,3 +87,36 @@ for webp_mux in to_mux:
 for f in complete_files:
     os.makedirs(os.path.dirname(complete_output_directory + "/" + f), exist_ok=True)
     shutil.copyfile(f, complete_output_directory + "/" + f)
+
+# Now move them all back into the image folder
+
+dont_copy = set(source_files)
+
+converted_images = 'webpimages'
+os.makedirs(converted_images, exist_ok=True)
+
+for root, dirs, files in os.walk('complete/animated/webp'):
+    for file in files:
+        src = os.path.join(root, file)
+        dest = os.path.join(converted_images, os.path.relpath(src, 'complete/animated/webp/images'))
+        print(src, '->', dest)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        os.rename(src, dest)
+
+for root, dirs, files in os.walk('complete/webp'):
+    for file in files:
+        src = os.path.join(root, file)
+        dest = os.path.join(converted_images, os.path.relpath(os.path.join(root, file), 'complete/webp/images'))
+        print(src, '->', dest)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        os.rename(src, dest)
+
+for file in glob.glob("images/**/*.*", recursive=True):
+    src = file
+    dest = os.path.join(converted_images, os.path.relpath(file, 'images'))
+    if file in dont_copy:
+        pass
+    else:
+        print(src, '->', dest)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        shutil.copyfile(src, dest)

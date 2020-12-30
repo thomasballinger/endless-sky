@@ -1,14 +1,22 @@
-endless-sky.js:
+# Makefile for the web build of Endless Sky
+endless-sky.js: libwebp
 	scons -j 8 mode=emcc music=off opengl=gles threads=off
 clean:
 	rm -f endless-sky.js
-dev: endless-sky.js
+dev: endless-sky.js webpimages
 	emrun --serve_after_close --serve_after_exit --browser chrome --private_browsing endless-sky.html
 favicon.ico:
 	wget https://endless-sky.github.io/favicon.ico
 Ubuntu-Regular.ttf:
 	curl -Ls 'https://github.com/google/fonts/blob/master/ufl/ubuntu/Ubuntu-Regular.ttf?raw=true' > Ubuntu-Regular.ttf
-output/index.html: endless-sky.js endless-sky.html favicon.ico title.png endless-sky.data Ubuntu-Regular.ttf
+libwebp: libwebp.tar.gz
+	tar -xzf libwebp.tar.gz
+	mv libwebp-1.1.0 libwebp
+libwebp.tar.gz:
+	wget -O libwebp.tar.gz https://github.com/webmproject/libwebp/archive/v1.1.0.tar.gz
+webpimages: images
+	python3 convert.py
+output/index.html: endless-sky.js endless-sky.html favicon.ico title.png endless-sky.data Ubuntu-Regular.ttf webpimages
 	rm -rf output
 	mkdir -p output
 	cp endless-sky.html output/index.html
