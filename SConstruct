@@ -104,6 +104,9 @@ if env["mode"] == "emcc":
 		Exit(1)
 	flags += ["-g4"]
 	env['CXX'] = "em++"
+	env['CC'] = "emcc"
+	env['AR'] = "emar"
+	env['RANLIB'] = "emranlib"
 	common_flags += [
 		"-s", "DISABLE_EXCEPTION_CATCHING=0",
 		"-s", "USE_SDL=2",
