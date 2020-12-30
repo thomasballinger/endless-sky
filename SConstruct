@@ -75,8 +75,6 @@ game_libs = [
 	"turbojpeg.dll",
 	"jpeg.dll",
 	"openal32.dll",
-	"glew32.dll",
-	"opengl32",
 ] if is_windows_host else [
 	"SDL2",
 	"png",
@@ -86,21 +84,19 @@ game_libs = [
 ]
 env.Append(LIBS = game_libs)
 
-if env["opengl"] == "desktop":
+if env["opengl"] == "gles" and not is_windows_host:
 	env.Append(LIBS = [
-		"GL",
-		"GLEW"
+		"GLESv2",
 	]);
+	env.Append(CCFLAGS = ["-DES_GLES"])
 else:
 	env.Append(LIBS = [
-		"GLESv2"
+		"glew32.dll",
+		"opengl32",
+	] if is_windows_host else [
+		"GL",
+		"GLEW",
 	]);
-	flags += ["-DES_GLES"]
-
-
-# Required build flags. If you want to use SSE optimization, you can turn on
-# -msse3 or (if just building for your own computer) -march=native.
-env.Append(CCFLAGS = flags)
 
 # libmad is not in the Steam runtime, so link it statically:
 if 'steamrt_scout_i386' in chroot_name:
