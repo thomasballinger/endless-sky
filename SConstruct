@@ -36,6 +36,7 @@ opts.AddVariables(
 	EnumVariable("mode", "Compilation mode", "release", allowed_values=("release", "debug", "profile")),
 	EnumVariable("opengl", "Whether to use OpenGL or OpenGL ES", "desktop", allowed_values=("desktop", "gles")),
 	EnumVariable("music", "Whether to use music", "on", allowed_values=("on", "off")),
+	EnumVariable("threads", "Whether to use threads", "on", allowed_values=("on", "off")),
 	PathVariable("BUILDDIR", "Directory to store compiled object files in", "build", PathVariable.PathIsDirCreate),
 	PathVariable("BIN_DIR", "Directory to store binaries in", ".", PathVariable.PathIsDirCreate),
 	PathVariable("DESTDIR", "Destination root directory, e.g. if building a package", "", PathVariable.PathAccept),
@@ -80,12 +81,18 @@ game_libs = [
 	"png",
 	"jpeg",
 	"openal",
-	"pthread",
 ]
 env.Append(LIBS = game_libs)
 
 if env["music"] == "off":
 	flags += ["-DES_NO_MUSIC"]
+
+if env["threads"] == "off":
+	flags += ["-DES_NO_THREADS"]
+else:
+	env.Append(LIBS = [
+		"pthread"
+	]);
 
 if env["opengl"] == "desktop":
 	env.Append(LIBS = [
