@@ -1,7 +1,17 @@
 endless-sky.js:
 	scons -j 8 mode=emcc music=off opengl=gles threads=off
+dataversion.js: endless-sky.js
 clean:
 	rm -f endless-sky.js
+	rm -f endless-sky.data
+	rm -f endless-sky.wasm
+	rm -f dataversion.js
+	rm -rf output
+	rm -f endless-sky.wasm.map
+clean-full: clean
+	rm -f favicon.ico
+	rm -f Ubuntu-Regular.ttf
+	rm -f title.png
 dev: endless-sky.js
 	emrun --serve_after_close --serve_after_exit --browser chrome --private_browsing endless-sky.html
 favicon.ico:
@@ -10,7 +20,7 @@ Ubuntu-Regular.ttf:
 	curl -Ls 'https://github.com/google/fonts/blob/master/ufl/ubuntu/Ubuntu-Regular.ttf?raw=true' > Ubuntu-Regular.ttf
 title.png:
 	cp images/_menu/title.png title.png
-output/index.html: endless-sky.js endless-sky.html favicon.ico title.png endless-sky.data Ubuntu-Regular.ttf
+output/index.html: endless-sky.js endless-sky.html favicon.ico title.png endless-sky.data Ubuntu-Regular.ttf dataversion.js
 	rm -rf output
 	mkdir -p output
 	cp endless-sky.html output/index.html
