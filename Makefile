@@ -8,6 +8,8 @@ favicon.ico:
 	wget https://endless-sky.github.io/favicon.ico
 Ubuntu-Regular.ttf:
 	curl -Ls 'https://github.com/google/fonts/blob/master/ufl/ubuntu/Ubuntu-Regular.ttf?raw=true' > Ubuntu-Regular.ttf
+title.png:
+	cp images/_menu/title.png title.png
 output/index.html: endless-sky.js endless-sky.html favicon.ico title.png endless-sky.data Ubuntu-Regular.ttf
 	rm -rf output
 	mkdir -p output
