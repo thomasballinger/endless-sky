@@ -131,7 +131,6 @@ if env["mode"] == "emcc":
 		"--preload-file", "sounds",
 		"--preload-file", "credits.txt",
 		"--preload-file", "keys.txt",
-		"--preload-file", "recent.txt",
 		#"--emrun",  # useful in dev, but causes hundreds of errors in prod
 		"-g4"
 	])
