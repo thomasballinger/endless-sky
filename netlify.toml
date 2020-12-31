@@ -1,0 +1,7 @@
+[build]
+  publish = "output/"
+
+  # Default build command.
+  command = "./build.sh"
+
+  environment = { PYTHON_VERSION = "3.7" }
