@@ -10,7 +10,7 @@ git fetch https://github.com/thomasballinger/endless-sky.git es-wasm-reformatted
 git merge FETCH_HEAD
 
 # build emscripten
-EMSCRIPTEN_VERSION="1.39.18"
+EMSCRIPTEN_VERSION="latest"
 
 TEMPDIR=`mktemp -d`
 (cd ${TEMPDIR} &&
