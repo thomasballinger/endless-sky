@@ -201,8 +201,10 @@ if is_windows_host:
 def create_data_version_javascript(env, target, source):
 	import hashlib
 	hash_md5 = hashlib.md5()
+	length = 0
 	with open(str(source[0]), "rb") as f:
 		for chunk in iter(lambda: f.read(4096), b""):
+			length += len(chunk)
 			hash_md5.update(chunk)
 	hash = hash_md5.hexdigest()
 
@@ -211,7 +213,9 @@ def create_data_version_javascript(env, target, source):
 		f.write('// This is the md5 hash of the data file expected\n')
 		f.write('var endlessSkyDataVersion = "')
 		f.write(hash)
-		f.write('";\n')
+		f.write('";\nvar endlessSkyDataSize = ')
+		f.write(str(length))
+		f.write(';\n')
 
 if env["mode"] == "emcc":
 	sky = env.Program(['endless-sky.js', 'endless-sky.wasm', 'endless-sky.data'], exeObjs + sourceLib)
