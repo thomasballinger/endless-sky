@@ -50,7 +50,7 @@
     constructor(resourceUrl) {
       this.resourceUrl = resourceUrl;
     }
-    async get(version, progressCallback = () => {}) {
+    async get(length, version, progressCallback = () => {}) {
       const cachedData = await kvstore.get(this.resourceUrl);
       const cachedVersion = await kvstore.get(this.resourceUrl + "-version");
       if (cachedData) {
@@ -72,8 +72,12 @@
       let data;
 
       const response = await fetch(this.resourceUrl);
-      const length = parseInt(response.headers.get("Content-Length"));
+      const headerContentLength = parseInt(
+        response.headers.get("Content-Length")
+      );
+      // ContentLength header is not reliable: it might be the length of the compressed resource.
       if (length) {
+        // use a progress bar
         let offset = 0;
         data = new ArrayBuffer(length);
         const view = new Uint8Array(data);
@@ -88,6 +92,8 @@
         }
         progressCallback(offset, length);
       } else {
+        // no progress bar
+        progressCallback(0, headerContentLength);
         data = await response.arrayBuffer();
       }
 
