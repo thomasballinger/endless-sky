@@ -203,6 +203,8 @@ struct context
 	bool debugMode;
 	PlayerInfo* player;
 
+	chrono::steady_clock::time_point start;
+
 	// Data to track progress of testing if/when a test is running.
 	Test::Context testContext;
 } c;
@@ -239,7 +241,7 @@ void GameLoop(PlayerInfo &player, const Conversation &conversation, const string
 		while(true) {
 			if(c->toggleTimeout)
 				--c->toggleTimeout;
-			chrono::steady_clock::time_point start = chrono::steady_clock::now();
+			c->start = chrono::steady_clock::now();
 			
 			// Handle any events that occurred in this frame.
 			SDL_Event event;
@@ -367,7 +369,7 @@ void GameLoop(PlayerInfo &player, const Conversation &conversation, const string
 #endif
 		// If the player ended this frame in-game, count the elapsed time as played time.
 		if(menuPanels.IsEmpty())
-			player.AddPlayTime(chrono::steady_clock::now() - start);
+			c->player->AddPlayTime(chrono::steady_clock::now() - c->start);
 	};
 
 #ifdef __EMSCRIPTEN__
