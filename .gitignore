@@ -1,74 +1,8 @@
-# Compiled Binaries and shortcuts
-endless-sky
-endless-sky-tests
-libendless-sky.a
-*.exe
-*.lnk
+hello.data
+hello.html
+hello.js
+hello.wasm
+hello.wasm.map
 
-# dlls needed to run the binary
-*.dll
-
-# Files::LogError output from unit tests
-errors.txt
-
-# Build Directories and toolchain-generated files
-build/
-obj/
-bin/
-lib/
-x64/
-Debug/
-Release/
-*.layout
-*.depend
-scons-local*
-.sconsign.dblite
-/*.d
-*.o
-favicon.ico
-
-# emscripten build generated files
-title.png
-dataversion.js
-Ubuntu-Regular.ttf
-output
-endless-sky.data
-endless-sky.js
-endless-sky.wasm
-endless-sky.wasm.map
-
-# Test Reports
-test-report.xml
-
-# User-installed plugins
-plugins/
-
-# OS-specific generated files
-.DS_Store
-*.db
-
-# IDEs (no support implied)
-.vscode
-.vs
-*.psess
-*.vsp
-*.vspx
-*.sap
-ipch/
-*.aps
-*.ncb
-*.opendb
-*.opensdf
-*.sdf
-*.cachefile
-*.VC.db
-*.VC.VC.opendb
-*.suo
-*.sln
-*.vcxproj*
-*.userosscache
-*.sln.docstates
-*.xcodeproj/**
-.idea/
-.idea_modules/
-CMakeLists.txt
+build
+lib

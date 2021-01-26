@@ -1,44 +1,17 @@
-endless-sky.js:
-	scons -j 8 mode=emcc music=off opengl=gles threads=off
-dataversion.js: endless-sky.js
-clean:
-	rm -f endless-sky.js
-	rm -f endless-sky.data
-	rm -f endless-sky.wasm
-	rm -f dataversion.js
-	rm -rf output
-	rm -f endless-sky.wasm.map
-clean-full: clean
-	rm -f favicon.ico
-	rm -f Ubuntu-Regular.ttf
-	rm -f title.png
+hello.html:
+	mkdir -p build/emcc
+	mkdir -p lib/emcc
+	em++ -o build/emcc/main.o -c -O3 -flto -O3 -flto -g4 -DES_NO_MUSIC -DES_NO_THREADS -DES_GLES -s DISABLE_EXCEPTION_CATCHING=0 -s USE_SDL=2 -s USE_LIBPNG=1 -s USE_LIBJPEG=1 -s USE_WEBGL2=1 -s ASSERTIONS=2 -s DEMANGLE_SUPPORT=1 -s GL_ASSERTIONS=1 -s MIN_WEBGL_VERSION=2 -s EMULATE_FUNCTION_POINTER_CASTS=1 -s FETCH=1 source/main.cpp
+	emar rcS lib/emcc/libendless-sky.a
+	emranlib lib/emcc/libendless-sky.a
+	em++ -o hello.html -O3 -flto --source-map-base http://localhost:6931/ -s WASM_MEM_MAX=2147483648 -s INITIAL_MEMORY=838860800 -s ALLOW_MEMORY_GROWTH=1 -s EXTRA_EXPORTED_RUNTIME_METHODS=['callMain'] --preload-file data --preload-file images --preload-file sounds --preload-file credits.txt --preload-file keys.txt -g4 -s DISABLE_EXCEPTION_CATCHING=0 -s USE_SDL=2 -s USE_LIBPNG=1 -s USE_LIBJPEG=1 -s USE_WEBGL2=1 -s ASSERTIONS=2 -s DEMANGLE_SUPPORT=1 -s GL_ASSERTIONS=1 -s MIN_WEBGL_VERSION=2 -s EMULATE_FUNCTION_POINTER_CASTS=1 -s FETCH=1 build/emcc/main.o lib/emcc/libendless-sky.a -lopenal -lidbfs.js -lGLESv2
 dev: endless-sky.js
-	emrun --serve_after_close --serve_after_exit --browser chrome --private_browsing endless-sky.html
-favicon.ico:
-	wget https://endless-sky.github.io/favicon.ico
-Ubuntu-Regular.ttf:
-	curl -Ls 'https://github.com/google/fonts/blob/master/ufl/ubuntu/Ubuntu-Regular.ttf?raw=true' > Ubuntu-Regular.ttf
-title.png:
-	cp images/_menu/title.png title.png
-output/index.html: endless-sky.js endless-sky.html favicon.ico title.png endless-sky.data Ubuntu-Regular.ttf dataversion.js
-	rm -rf output
-	mkdir -p output
-	cp endless-sky.html output/index.html
-	cp endless-sky.wasm endless-sky.wasm.map endless-sky.data endless-sky.js output/
-	cp -r js/ output/js
-	cp dataversion.js output/
-	cp title.png output/
-	cp favicon.ico output/
-	cp Ubuntu-Regular.ttf output/
-test: output/index.html
-	cd output; (sleep 1; python3 -m webbrowser http://localhost:8000) & python -m http.server
-deploy: output/index.html
-	@if curl -s https://play-endless-sky.com/dataversion.js | diff - dataversion.js; \
-		then \
-			echo 'uploading all files except endless-sky.data...'; \
-			aws s3 sync --exclude endless-sky.data output s3://play-endless-sky.com/live;\
-		else \
-			echo 'uploading all files, including endless-sky.data...'; \
-			aws s3 sync output s3://play-endless-sky.com/live;\
-	fi
-	aws cloudfront create-invalidation --distribution-id E2TZUW922XPLEF --paths /\*
+	emrun --serve_after_close --serve_after_exit --browser chrome --private_browsing hello.html
+clean:
+	rm -rf build
+	rm -rf lib
+	rm -f hello.html
+	rm -f hello.data
+	rm -f hello.js
+	rm -f hello.wasm
+	rm -f hello.wasm.map
