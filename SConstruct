@@ -107,6 +107,8 @@ if env["mode"] == "emcc":
 	env['CC'] = "emcc"
 	env['AR'] = "emar"
 	env['RANLIB'] = "emranlib"
+	#env['ENV']['EM_CACHE'] = 'emcache' # This doesn't work yet, maybe it will soon
+	#env['ENV']['EMCC_DEBUG'] = '1' # Very loud, very useful
 	common_flags += [
 		"-s", "DISABLE_EXCEPTION_CATCHING=0",
 		"-s", "USE_SDL=2",
@@ -117,7 +119,7 @@ if env["mode"] == "emcc":
 		"-s", "DEMANGLE_SUPPORT=1",
 		"-s", "GL_ASSERTIONS=1",
 		"-s", "MIN_WEBGL_VERSION=2",
-		"-s", "EMULATE_FUNCTION_POINTER_CASTS=1",
+		#"-s", "SUPPORT_LONGJMP=0", # to try someday
 		"-s", "FETCH=1"
 	]
 	env.Append(LINKFLAGS = [
@@ -132,7 +134,7 @@ if env["mode"] == "emcc":
 		"--preload-file", "credits.txt",
 		"--preload-file", "keys.txt",
 		#"--emrun",  # useful in dev, but causes hundreds of errors in prod
-		"-g4"
+		"-g"
 	])
 	env.Append(LIBS = [
 		"idbfs.js"

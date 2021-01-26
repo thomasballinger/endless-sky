@@ -24,7 +24,7 @@ output/index.html: endless-sky.js endless-sky.html favicon.ico title.png endless
 	rm -rf output
 	mkdir -p output
 	cp endless-sky.html output/index.html
-	cp endless-sky.wasm endless-sky.wasm.map endless-sky.data endless-sky.js output/
+	cp endless-sky.wasm endless-sky.data endless-sky.js output/
 	cp -r js/ output/js
 	cp dataversion.js output/
 	cp title.png output/
