@@ -1,6 +1,10 @@
 #!/bin/bash
 set -x
 
+echo Was this triggered by a webhook?
+echo $INCOMING_HOOK_TITLE
+echo $INCOMING_HOOK_BODY
+
 # install build system used by Endless Sky (it's not popular enough to already be installed)
 python -m pip install scons
 
@@ -38,3 +42,6 @@ make output/index.html || exit $?
 #echo "After making, what's the cache look like?"
 #ls ./emsdk/upstream/emscripten/cache/
 #ls ./emsdk/upstream/emscripten/cache/wasm-lto/
+
+echo Deploy url:
+echo $DEPLOY_URL
