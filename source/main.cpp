@@ -113,48 +113,47 @@ int main(int argc, char *argv[])
 			testToRunName = *it;
 	}
 	
-	// Begin loading the game data. Exit early if we are not using the UI.
-	if(!GameData::BeginLoad(argv))
-		return 0;
-	
-	if(!testToRunName.empty() && !GameData::Tests().Has(testToRunName))
-	{
-		Files::LogError("Test \"" + testToRunName + "\" not found.");
-		return 1;
-	}
-	
-	// Load player data, including reference-checking.
-	PlayerInfo player;
-	bool checkedReferences = player.LoadRecent();
-	if(loadOnly)
-	{
-		if(!checkedReferences)
-			GameData::CheckReferences();
-		cout << "Parse completed." << endl;
-		return 0;
-	}
-	
-	// On Windows, make sure that the sleep timer has at least 1 ms resolution
-	// to avoid irregular frame rates.
+	try {
+		// Begin loading the game data. Exit early if we are not using the UI.
+		if(!GameData::BeginLoad(argv))
+			return 0;
+		
+		if(!testToRunName.empty() && !GameData::Tests().Has(testToRunName))
+		{
+			Files::LogError("Test \"" + testToRunName + "\" not found.");
+			return 1;
+		}
+		
+		// Load player data, including reference-checking.
+		PlayerInfo player;
+		bool checkedReferences = player.LoadRecent();
+		if(loadOnly)
+		{
+			if(!checkedReferences)
+				GameData::CheckReferences();
+			cout << "Parse completed." << endl;
+			return 0;
+		}
+		
+		// On Windows, make sure that the sleep timer has at least 1 ms resolution
+		// to avoid irregular frame rates.
 #ifdef _WIN32
-	timeBeginPeriod(1);
+		timeBeginPeriod(1);
 #endif
-	
-	Preferences::Load();
-	
-	if(!GameWindow::Init())
-		return 1;
-	
-	GameData::LoadShaders(!GameWindow::HasSwizzle());
-	
-	// Show something other than a blank window.
-	GameWindow::Step();
-	
-	Audio::Init(GameData::Sources());
-	
-	// This is the main loop where all the action begins.
-	try
-	{
+		
+		Preferences::Load();
+		
+		if(!GameWindow::Init())
+			return 1;
+		
+		GameData::LoadShaders(!GameWindow::HasSwizzle());
+		
+		// Show something other than a blank window.
+		GameWindow::Step();
+		
+		Audio::Init(GameData::Sources());
+		
+		// This is the main loop where all the action begins.
 		GameLoop(player, conversation, testToRunName, debugMode);
 	}
 	catch(const runtime_error &error)
@@ -165,7 +164,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	
-	// Remember the window state.
+	// Remember the window state and preferences if quitting normally.
 	Preferences::Set("maximized", GameWindow::IsMaximized());
 	Preferences::Set("fullscreen", GameWindow::IsFullscreen());
 	Screen::SetRaw(GameWindow::Width(), GameWindow::Height());
@@ -177,38 +176,6 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-UI gamePanels;
-UI menuPanels;
-
-struct context
-{
-	context()
-		: timer(frameRate)
-	{
-	}
-	bool showCursor = true;
-	int cursorTime = 0;
-	int frameRate = 60;
-	FrameTimer timer;
-	bool isPaused = false;
-	bool isFastForward = false;
-
-	// If fast forwarding, keep track of whether the current frame should be drawn.
-	int skipFrame = 0;
-
-	// Limit how quickly full-screen mode can be toggled.
-	int toggleTimeout = 0;
-	UI* gamePanels;
-	UI* menuPanels;
-	bool debugMode;
-	PlayerInfo* player;
-
-	chrono::steady_clock::time_point start;
-
-	// Data to track progress of testing if/when a test is running.
-	Test::Context testContext;
-} c;
-
 void GameLoop(PlayerInfo &player, const Conversation &conversation, const string &testToRunName, bool debugMode)
 {
 	// gamePanels is used for the main panel where you fly your spaceship.
@@ -216,171 +183,160 @@ void GameLoop(PlayerInfo &player, const Conversation &conversation, const string
 	// If there are both menuPanels and gamePanels, then the menuPanels take
 	// priority over the gamePanels. The gamePanels will not be shown until
 	// the stack of menuPanels is empty.
-
+	UI gamePanels;
 	
 	// menuPanels is used for the panels related to pilot creation, preferences,
 	// game loading and game saving.
-
+	UI menuPanels;
 	
 	menuPanels.Push(new MenuPanel(player, gamePanels));
 	if(!conversation.IsEmpty())
 		menuPanels.Push(new ConversationPanel(player, conversation));
-
-	c.gamePanels = &gamePanels;
-	c.menuPanels = &menuPanels;
-	c.debugMode = debugMode;
-	c.player = &player;
+	
+	bool showCursor = true;
+	int cursorTime = 0;
+	int frameRate = 60;
+	FrameTimer timer(frameRate);
+	bool isPaused = false;
+	bool isFastForward = false;
+	
+	// If fast forwarding, keep track of whether the current frame should be drawn.
+	int skipFrame = 0;
+	
+	// Limit how quickly full-screen mode can be toggled.
+	int toggleTimeout = 0;
 	
 	// Data to track progress of testing if/when a test is running.
+	Test::Context testContext;
 	if(!testToRunName.empty())
-		c.testContext.testToRun = GameData::Tests().Get(testToRunName);
-
-	auto gameloop = [](void* data) {
-		context* c = static_cast<context*>(data);
-
-		while(true) {
-			if(c->toggleTimeout)
-				--c->toggleTimeout;
-			c->start = chrono::steady_clock::now();
+		testContext.testToRun = GameData::Tests().Get(testToRunName);
+	
+	// IsDone becomes true when the game is quit.
+	while(!menuPanels.IsDone())
+	{
+		if(toggleTimeout)
+			--toggleTimeout;
+		chrono::steady_clock::time_point start = chrono::steady_clock::now();
+		
+		// Handle any events that occurred in this frame.
+		SDL_Event event;
+		while(SDL_PollEvent(&event))
+		{
+			UI &activeUI = (menuPanels.IsEmpty() ? gamePanels : menuPanels);
 			
-			// Handle any events that occurred in this frame.
-			SDL_Event event;
-			while(SDL_PollEvent(&event))
-			{
-				// int mpe = c->menuPanels->IsEmpty();
-				// int gpe = c->gamePanels->IsEmpty();
-				UI& activeUI = (c->menuPanels->IsEmpty() ? *c->gamePanels : *c->menuPanels);
-
-				// If the mouse moves, reset the cursor movement timeout.
-				if(event.type == SDL_MOUSEMOTION)
-					c->cursorTime = 0;
-
-				if(c->debugMode && event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_BACKQUOTE)
-				{
-					c->isPaused = !c->isPaused;
-				}
-				else if(event.type == SDL_KEYDOWN && c->menuPanels->IsEmpty() && Command(event.key.keysym.sym).Has(Command::MENU)
-					&& !c->gamePanels->IsEmpty()
-					&& c->gamePanels->Top()->IsInterruptible())
-				{
-					// User pressed the Menu key.
-					c->menuPanels->Push(shared_ptr<Panel>(
-						new MenuPanel(*c->player, *c->gamePanels)));
-				}
-				else if(event.type == SDL_QUIT)
-				{
-					c->menuPanels->Quit();
-				}
-				else if(event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
-				{
-					// The window has been resized. Adjust the raw screen size
-					// and the OpenGL viewport to match.
-					GameWindow::AdjustViewport();
-				}
-				else if(activeUI.Handle(event))
-				{
-					// The UI handled the event.
-				}
-				else if(event.type == SDL_KEYDOWN && !c->toggleTimeout
-						&& (Command(event.key.keysym.sym).Has(Command::FULLSCREEN)
-						|| (event.key.keysym.sym == SDLK_RETURN && (event.key.keysym.mod & KMOD_ALT))))
-				{
-					c->toggleTimeout = 30;
-					GameWindow::ToggleFullscreen();
-				}
-				else if(event.type == SDL_KEYDOWN && !event.key.repeat
-						&& (Command(event.key.keysym.sym).Has(Command::FASTFORWARD)))
-				{
-					c->isFastForward = !c->isFastForward;
-				}
-			}
-			SDL_Keymod mod = SDL_GetModState();
-			Font::ShowUnderlines(mod & KMOD_ALT);
-
-			// In full-screen mode, hide the cursor if inactive for ten seconds,
-			// but only if the player is flying around in the main view.
-			bool inFlight = (c->menuPanels->IsEmpty() && c->gamePanels->Root() == c->gamePanels->Top());
-			++c->cursorTime;
-			bool shouldShowCursor = (!GameWindow::IsFullscreen() || c->cursorTime < 600 || !inFlight);
-			if(shouldShowCursor != c->showCursor)
-			{
-				c->showCursor = shouldShowCursor;
-				SDL_ShowCursor(c->showCursor);
-			}
-
-			// Switch off fast-forward if the player is not in flight or flight-related screen
-			// (for example when the boarding dialog shows up or when the player lands). The player
-			// can switch fast-forward on again when flight is resumed.
-			bool allowFastForward = !gamePanels.IsEmpty() && gamePanels.Top()->AllowFastForward();
-			if(Preferences::Has("Interrupt fast-forward") && !inFlight && c->isFastForward && !allowFastForward)
-				c->isFastForward = false;
+			// If the mouse moves, reset the cursor movement timeout.
+			if(event.type == SDL_MOUSEMOTION)
+				cursorTime = 0;
 			
-			// Tell all the panels to step forward, then draw them.
-			((!c->isPaused && c->menuPanels->IsEmpty()) ? c->gamePanels : c->menuPanels)->StepAll();
-			
-			// All manual events and processing done. Handle any test inputs and events if we have any.
-			if(c->testContext.testToRun)
-				c->testContext.testToRun->Step(c->testContext, *(c->menuPanels), *(c->gamePanels), *(c->player));
-			
-			// Caps lock slows the frame rate in debug mode.
-			// Slowing eases in and out over a couple of frames.
-			if((mod & KMOD_CAPS) && inFlight && c->debugMode)
+			if(debugMode && event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_BACKQUOTE)
 			{
-#ifndef __EMSCRIPTEN__
-				if (c->frameRate > 10)
-				{
-					c->frameRate = max(c->frameRate - 5, 10);
-					c->timer.SetFrameRate(c->frameRate);
-				}
-#endif
+				isPaused = !isPaused;
 			}
-			else
+			else if(event.type == SDL_KEYDOWN && menuPanels.IsEmpty()
+					&& Command(event.key.keysym.sym).Has(Command::MENU)
+					&& !gamePanels.IsEmpty() && gamePanels.Top()->IsInterruptible())
 			{
-#ifndef __EMSCRIPTEN__
-				if (c->frameRate < 60)
-				{
-					c->frameRate = min(c->frameRate + 5, 60);
-					c->timer.SetFrameRate(c->frameRate);
-				}
-#endif
+				// User pressed the Menu key.
+				menuPanels.Push(shared_ptr<Panel>(
+					new MenuPanel(player, gamePanels)));
+			}
+			else if(event.type == SDL_QUIT)
+			{
+				menuPanels.Quit();
+			}
+			else if(event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+			{
+				// The window has been resized. Adjust the raw screen size
+				// and the OpenGL viewport to match.
+				GameWindow::AdjustViewport();
+			}
+			else if(activeUI.Handle(event))
+			{
+				// The UI handled the event.
+			}
+			else if(event.type == SDL_KEYDOWN && !toggleTimeout
+					&& (Command(event.key.keysym.sym).Has(Command::FULLSCREEN)
+					|| (event.key.keysym.sym == SDLK_RETURN && (event.key.keysym.mod & KMOD_ALT))))
+			{
+				toggleTimeout = 30;
+				GameWindow::ToggleFullscreen();
+			}
+			else if(event.type == SDL_KEYDOWN && !event.key.repeat
+					&& (Command(event.key.keysym.sym).Has(Command::FASTFORWARD)))
+			{
+				isFastForward = !isFastForward;
+			}
+		}
+		SDL_Keymod mod = SDL_GetModState();
+		Font::ShowUnderlines(mod & KMOD_ALT);
+		
+		// In full-screen mode, hide the cursor if inactive for ten seconds,
+		// but only if the player is flying around in the main view.
+		bool inFlight = (menuPanels.IsEmpty() && gamePanels.Root() == gamePanels.Top());
+		++cursorTime;
+		bool shouldShowCursor = (!GameWindow::IsFullscreen() || cursorTime < 600 || !inFlight);
+		if(shouldShowCursor != showCursor)
+		{
+			showCursor = shouldShowCursor;
+			SDL_ShowCursor(showCursor);
+		}
 
-				if(c->isFastForward && inFlight)
-				{
-					c->skipFrame = (c->skipFrame + 1) % 3;
-					if (c->skipFrame)
-						continue;
-				}
+		// Switch off fast-forward if the player is not in flight or flight-related screen
+		// (for example when the boarding dialog shows up or when the player lands). The player
+		// can switch fast-forward on again when flight is resumed.
+		bool allowFastForward = !gamePanels.IsEmpty() && gamePanels.Top()->AllowFastForward();
+		if(Preferences::Has("Interrupt fast-forward") && !inFlight && isFastForward && !allowFastForward)
+			isFastForward = false;
+		
+		// Tell all the panels to step forward, then draw them.
+		((!isPaused && menuPanels.IsEmpty()) ? gamePanels : menuPanels).StepAll();
+		
+		// All manual events and processing done. Handle any test inputs and events if we have any.
+		if(testContext.testToRun)
+			testContext.testToRun->Step(testContext, menuPanels, gamePanels, player);
+		
+		// Caps lock slows the frame rate in debug mode.
+		// Slowing eases in and out over a couple of frames.
+		if((mod & KMOD_CAPS) && inFlight && debugMode)
+		{
+			if(frameRate > 10)
+			{
+				frameRate = max(frameRate - 5, 10);
+				timer.SetFrameRate(frameRate);
 			}
-			break;
+		}
+		else
+		{
+			if(frameRate < 60)
+			{
+				frameRate = min(frameRate + 5, 60);
+				timer.SetFrameRate(frameRate);
+			}
+			
+			if(isFastForward && inFlight)
+			{
+				skipFrame = (skipFrame + 1) % 3;
+				if(skipFrame)
+					continue;
+			}
 		}
 		
 		Audio::Step();
 		
 		// Events in this frame may have cleared out the menu, in which case
 		// we should draw the game panels instead:
-		(c->menuPanels->IsEmpty() ? c->gamePanels : c->menuPanels)->DrawAll();
-		if(c->isFastForward)
+		(menuPanels.IsEmpty() ? gamePanels : menuPanels).DrawAll();
+		if(isFastForward)
 			SpriteShader::Draw(SpriteSet::Get("ui/fast forward"), Screen::TopLeft() + Point(10., 10.));
 		
 		GameWindow::Step();
 
-#ifndef __EMSCRIPTEN__
-		c->timer.Wait();
-#endif
+		timer.Wait();
+		
 		// If the player ended this frame in-game, count the elapsed time as played time.
 		if(menuPanels.IsEmpty())
-			c->player->AddPlayTime(chrono::steady_clock::now() - c->start);
-	};
-
-#ifdef __EMSCRIPTEN__
-	emscripten_set_main_loop_arg(gameloop, static_cast<void*>(&c), 0, 1);
-#else
-	// IsDone becomes true when the game is quit.
-	while(!menuPanels.IsDone())
-	{
-		gameloop(&c);
+			player.AddPlayTime(chrono::steady_clock::now() - start);
 	}
-#endif
 	
 	// If player quit while landed on a planet, save the game if there are changes.
 	if(player.GetPlanet() && gamePanels.CanSave())

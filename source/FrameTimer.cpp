@@ -14,6 +14,10 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 #include <thread>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 using namespace std;
 
 

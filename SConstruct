@@ -120,6 +120,7 @@ if env["mode"] == "emcc":
 		"-s", "GL_ASSERTIONS=1",
 		"-s", "MIN_WEBGL_VERSION=2",
 		#"-s", "SUPPORT_LONGJMP=0", # to try someday
+		"-s", "ASYNCIFY", # let's give it a shot...
 		"-s", "FETCH=1"
 	]
 	env.Append(LINKFLAGS = [
