@@ -1,18 +1,32 @@
 #!/bin/bash
 set -x
 
+# Require to do merges
+git config --global user.email "example@example.com"
+git config --global user.name "beep boop"
+
 echo Was this triggered by a webhook?
 echo $INCOMING_HOOK_TITLE
 echo $INCOMING_HOOK_BODY
+body_size=${#INCOMING_HOOK_BODY}
+if [[ ${#INCOMING_HOOK_TITLE} == "0" ]]; then
+  echo Not a hook
+elif [[ ${#INCOMING_HOOK_BODY} != "40" ]]; then
+  echo Bad hook response body! Submit a git sha.
+else
+  echo Deploy hook called with sha $INCOMING_HOOK_BODY
+  # check out  emscripten changes
+  git fetch https://github.com/endless-sky/endless-sky.git es-wasm-reformatted
+  git checkout FETCH_HEAD
+  echo "Let's hope the web build changes merge cleanly into this!"
+fi
+
+# merge in emscripten changes
+git fetch https://github.com/thomasballinger/endless-sky.git es-wasm-reformatted
+git merge FETCH_HEAD
 
 # install build system used by Endless Sky (it's not popular enough to already be installed)
 python -m pip install scons
-
-# merge in emscripten changes
-git config --global user.email "example@example.com"
-git config --global user.name "beep boop"
-git fetch https://github.com/thomasballinger/endless-sky.git es-wasm-reformatted
-git merge FETCH_HEAD
 
 # activate emscripten (built by plugin)
 #EMSCRIPTEN_VERSION="1.39.18" ?
