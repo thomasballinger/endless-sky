@@ -1,13 +1,13 @@
 #!/bin/bash
-set -x
+set -ex
 
 # Require to do merges
 git config --global user.email "example@example.com"
 git config --global user.name "beep boop"
 
 echo Was this triggered by a webhook?
-echo $INCOMING_HOOK_TITLE
-echo $INCOMING_HOOK_BODY
+echo INCOMING_HOOK_TITLE $INCOMING_HOOK_TITLE
+echo INCOMING_HOOK_TITLE $INCOMING_HOOK_BODY
 body_size=${#INCOMING_HOOK_BODY}
 if [[ ${#INCOMING_HOOK_TITLE} == "0" ]]; then
   echo Not a hook
@@ -16,7 +16,7 @@ elif [[ ${#INCOMING_HOOK_BODY} != "40" ]]; then
 else
   echo Deploy hook called with sha $INCOMING_HOOK_BODY
   # check out  emscripten changes
-  git fetch https://github.com/endless-sky/endless-sky.git es-wasm-reformatted
+  git fetch https://github.com/endless-sky/endless-sky.git $INCOMING_HOOK_BODY
   git checkout FETCH_HEAD
   echo "Let's hope the web build changes merge cleanly into this!"
 fi
