@@ -429,3 +429,12 @@ jobs:
       # In a perfect world we would run a debug build, but since this will run on PRs, we can limit our search of "what caused the bug" to only the code
       # added by that PR, which means debugging symbols aren't as necessary. (We can ignore the still-reachable cin, cout, cerr inherited file descriptors.)
       run: valgrind --tool=memcheck --leak-check=full --track-origins=yes --track-fds=yes --error-exitcode=1 ./endless-sky -p
+
+  web-build:
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Invoke Netlify web build deploy
+      uses: distributhor/workflow-webhook@v1
+      env:
+        webhook_url: https://api.netlify.com/build_hooks/6011b2b74e994684fad7db80
+        webhook_secret: not_a_secret
