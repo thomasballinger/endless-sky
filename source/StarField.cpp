@@ -47,7 +47,7 @@ namespace {
 void StarField::Init(int stars, int width)
 {
 	SetUpGraphics();
-	MakeStars(stars*20, width);
+	MakeStars(stars*1, width);
 	
 	const Sprite *sprite = SpriteSet::Get("_menu/haze");
 	for(size_t i = 0; i < HAZE_COUNT; ++i)
