@@ -27,18 +27,21 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 using namespace std;
 
 namespace {
+#ifndef ES_NO_AUDIO
 	// Read a WAV header, and return the size of the data, in bytes. If the file
 	// is an unsupported format (anything but little-endian 16-bit PCM at 44100 HZ),
 	// this will return 0.
 	uint32_t ReadHeader(File &in, uint32_t &frequency);
 	uint32_t Read4(File &in);
 	uint16_t Read2(File &in);
+#endif // ES_NO_AUDIO
 }
 
 
 
 bool Sound::Load(const string &path, const string &name)
 {
+#ifndef ES_NO_AUDIO
 	if(path.length() < 5 || path.compare(path.length() - 4, 4, ".wav"))
 		return false;
 	this->name = name;
@@ -60,6 +63,7 @@ bool Sound::Load(const string &path, const string &name)
 	if(!buffer)
 		alGenBuffers(1, &buffer);
 	alBufferData(buffer, AL_FORMAT_MONO16, &data.front(), bytes, frequency);
+#endif // ES_NO_AUDIO
 	
 	return true;
 }
@@ -88,6 +92,7 @@ bool Sound::IsLooping() const
 
 
 namespace {
+#ifndef ES_NO_AUDIO
 	// Read a WAV header, and return the size of the data, in bytes. If the file
 	// is an unsupported format (anything but little-endian 16-bit PCM at 44100 HZ),
 	// this will return 0.
@@ -173,4 +178,5 @@ namespace {
 			result |= static_cast<uint16_t>(data[i]) << (i * 8);
 		return result;
 	}
+#endif // ES_NO_AUDIO
 }

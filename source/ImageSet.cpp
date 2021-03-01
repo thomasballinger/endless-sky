@@ -28,9 +28,9 @@ namespace {
 	// Get the character index where the sprite name in the given path ends.
 	size_t NameEnd(const string &path)
 	{
-		// The path always ends in a three-letter extension, ".png" or ".jpg".
+		// The path always ends in a three or four letter extension, ".png" or ".jpg".
 		// In addition, 3 more characters may be taken up by an @2x label.
-		size_t end = path.length() - (ImageSet::Is2x(path) ? 7 : 4);
+		size_t end = path.rfind(".") - (ImageSet::Is2x(path) ? 3 : 0);
 		// This should never happen, but just in case:
 		if(!end)
 			return 0;
@@ -55,8 +55,8 @@ bool ImageSet::IsImage(const string &path)
 	if(path.length() < 4)
 		return false;
 	
-	string ext = path.substr(path.length() - 4);
-	return (ext == ".png" || ext == ".jpg" || ext == ".PNG" || ext == ".JPG");
+	const string ext = path.substr(path.rfind("."));
+	return (ext == ".png" || ext == ".jpg" || ext == ".PNG" || ext == ".JPG" || ext == ".webp" || ext == ".WEBP");
 }
 
 
@@ -74,7 +74,7 @@ string ImageSet::Name(const string &path)
 int ImageSet::FrameIndex(const string &path)
 {
 	// Get the character index where the "name" portion of the path ends.
-	// A path's format is always: <name>(<blend><frame>)(@2x).(png|jpg)
+	// A path's format is always: <name>(<blend><frame>|<animated>)(@2x).(png|jpg|webp)
 	size_t i = NameEnd(path);
 	
 	// If the name contains a frame index, it must be separated from the name
@@ -99,8 +99,8 @@ bool ImageSet::Is2x(const string &path)
 	if(path.length() < 7)
 		return false;
 	
-	size_t pos = path.length() - 7;
-	return (path[pos] == '@' && path[pos + 1] == '2' && path[pos + 2] == 'x');
+	size_t pos = path.rfind(".");
+	return path.compare(pos - 3, 3, "@2x") == 0;
 }
 
 
@@ -191,6 +191,8 @@ void ImageSet::Check() const
 // worker threads. This also generates collision masks if needed.
 void ImageSet::Load()
 {
+	// todo(janis): determine if the first path is animated. If it is, extract frame count from path
+
 	// Determine how many frames there will be, total. The image buffers will
 	// not actually be allocated until the first image is loaded (at which point
 	// the sprite's dimensions will be known).
@@ -203,11 +205,19 @@ void ImageSet::Load()
 	if(makeMasks)
 		masks.resize(frames);
 	
+	// todo(janis): if is animated, populate all he frames from single file
 	// Load the 1x sprites first, then the 2x sprites, because they are likely
 	// to be in separate locations on the disk. Create masks if needed.
 	for(size_t i = 0; i < frames; ++i)
-		if(buffer[0].Read(paths[0][i], i) && makeMasks)
+		buffer[0].Read(paths[0][i], i);
+
+	// Postpone creating masks in case there were animated assets
+	if (makeMasks) {
+		for(size_t i = 0; i < frames; ++i) {
 			masks[i].Create(buffer[0], i);
+		}
+	}
+
 	// Now, load the 2x sprites, if they exist. Because the number of 1x frames
 	// is definitive, don't load any frames beyond the size of the 1x list.
 	for(size_t i = 0; i < frames && i < paths[1].size(); ++i)

@@ -16,6 +16,11 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 #include <png.h>
 #include <jpeglib.h>
+#include <webp/decode.h>
+#include <webp/demux.h>
+#include <strings.h>
+#include <string.h>
+#include <memory>
 
 #include <cstdio>
 #include <vector>
@@ -23,14 +28,37 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 using namespace std;
 
 namespace {
-	bool ReadPNG(const string &path, ImageBuffer &buffer, int frame);
-	bool ReadJPG(const string &path, ImageBuffer &buffer, int frame);
-	void Premultiply(ImageBuffer &buffer, int frame, int additive);
+	std::vector<bool> ReadPNG(const string &path, ImageBuffer &buffer, uint32_t frame);
+	std::vector<bool> ReadJPG(const string &path, ImageBuffer &buffer, uint32_t frame);
+	std::vector<bool> ReadWEBP(const string &path, ImageBuffer &buffer, uint32_t frame);
+	void Premultiply(ImageBuffer &buffer, uint32_t frame, int additive);
+	int Compare(const char *a, const char *b, bool caseSensitive)
+	{
+		if (a == nullptr || b == nullptr)
+			return false;
+
+		if (caseSensitive)
+		{
+			return strcmp(a, b);
+		}
+		else
+		{
+			return strcasecmp(a, b);
+		}
+	}
+	bool EndsWith(const std::string &str, const std::string &match, bool caseSensitive = true)
+	{
+		if (str.size() >= match.size())
+		{
+			auto start = str.c_str() + str.size() - match.size();
+			return Compare(start, match.c_str(), caseSensitive) == 0;
+		}
+		return false;
+	}
 }
 
 
-
-ImageBuffer::ImageBuffer(int frames)
+ImageBuffer::ImageBuffer(uint32_t frames)
 	: width(0), height(0), frames(frames), pixels(nullptr)
 {
 }
@@ -45,7 +73,7 @@ ImageBuffer::~ImageBuffer()
 
 
 // Set the number of frames. This must be called before allocating.
-void ImageBuffer::Clear(int frames)
+void ImageBuffer::Clear(uint32_t frames)
 {
 	delete [] pixels;
 	pixels = nullptr;
@@ -56,7 +84,7 @@ void ImageBuffer::Clear(int frames)
 
 // Allocate the internal buffer. This must only be called once for each
 // image buffer; subsequent calls will be ignored.
-void ImageBuffer::Allocate(int width, int height)
+void ImageBuffer::Allocate(uint32_t width, uint32_t height)
 {
 	// Do nothing if the buffer is already allocated or if any of the dimensions
 	// is set to zero.
@@ -70,21 +98,21 @@ void ImageBuffer::Allocate(int width, int height)
 
 
 
-int ImageBuffer::Width() const
+uint32_t ImageBuffer::Width() const
 {
 	return width;
 }
 
 
 
-int ImageBuffer::Height() const
+uint32_t ImageBuffer::Height() const
 {
 	return height;
 }
 
 
 
-int ImageBuffer::Frames() const
+uint32_t ImageBuffer::Frames() const
 {
 	return frames;
 }
@@ -105,14 +133,14 @@ uint32_t *ImageBuffer::Pixels()
 
 
 
-const uint32_t *ImageBuffer::Begin(int y, int frame) const
+const uint32_t *ImageBuffer::Begin(uint32_t y, uint32_t frame) const
 {
 	return pixels + width * (y + height * frame);
 }
 
 
 
-uint32_t *ImageBuffer::Begin(int y, int frame)
+uint32_t *ImageBuffer::Begin(uint32_t y, uint32_t frame)
 {
 	return pixels + width * (y + height * frame);
 }
@@ -127,7 +155,7 @@ void ImageBuffer::ShrinkToHalfSize()
 	unsigned char *begin = reinterpret_cast<unsigned char *>(pixels);
 	unsigned char *out = reinterpret_cast<unsigned char *>(result.pixels);
 	// Loop through every line of every frame of the buffer.
-	for(int y = 0; y < result.height * frames; ++y)
+	for(uint32_t y = 0; y < result.height * frames; ++y)
 	{
 		unsigned char *aIt = begin + (4 * width) * (2 * y);
 		unsigned char *aEnd = aIt + 4 * 2 * result.width;
@@ -146,26 +174,41 @@ void ImageBuffer::ShrinkToHalfSize()
 
 
 
-bool ImageBuffer::Read(const string &path, int frame)
+bool ImageBuffer::Read(const string &path, uint32_t frame)
 {
 	// First, make sure this is a JPG or PNG file.
 	if(path.length() < 4)
 		return false;
 	
-	string extension = path.substr(path.length() - 4);
-	bool isPNG = (extension == ".png" || extension == ".PNG");
-	bool isJPG = (extension == ".jpg" || extension == ".JPG");
-	if(!isPNG && !isJPG)
+	bool isPNG = EndsWith(path, ".png", false);
+	bool isJPG = EndsWith(path, ".jpg", false);
+	bool isWEBP = EndsWith(path, ".webp", false);
+	if(!isPNG && !isJPG && !isWEBP)
+	{
+		printf("%s is invalid\n", path.c_str());
 		return false;
-	
-	if(isPNG && !ReadPNG(path, *this, frame))
-		return false;
-	if(isJPG && !ReadJPG(path, *this, frame))
-		return false;
-	
+	}
+
+	std::vector<bool> loaded_frames;
+	if(isPNG)
+		loaded_frames = ReadPNG(path, *this, frame);
+	if (isJPG)
+		loaded_frames = ReadJPG(path, *this, frame);
+	if (isWEBP)
+		loaded_frames = ReadWEBP(path, *this, frame);
+	bool all_loaded = true;
+	for (const auto& frame : loaded_frames)
+	{
+		if (!frame)
+		{
+			all_loaded = false;
+			break;
+		}
+	}
+
 	// Check if the sprite uses additive blending. Start by getting the index of
 	// the last character before the frame number (if one is specified).
-	int pos = path.length() - 4;
+	int pos = path.rfind(".");
 	if(pos > 3 && !path.compare(pos - 3, 3, "@2x"))
 		pos -= 3;
 	while(--pos)
@@ -176,53 +219,66 @@ bool ImageBuffer::Read(const string &path, int frame)
 	if(path[pos] != '=')
 	{
 		int additive = (path[pos] == '+') ? 2 : (path[pos] == '~') ? 1 : 0;
-		if(isPNG || (isJPG && additive == 2))
-			Premultiply(*this, frame, additive);
+		if(isPNG || isWEBP || (isJPG && additive == 2))
+		{
+			for (auto frame_idx = 0u; frame_idx < loaded_frames.size(); frame_idx++)
+			{
+				if (loaded_frames[frame_idx])
+				{
+					Premultiply(*this, frame_idx, additive);
+				}
+			}
+		}
 	}
+
+	// Only report error after processing all the loaded frames
+	if(!all_loaded)
+	{
+		return false;
+	}
+
 	return true;
 }
 
-
-
 namespace {
-	bool ReadPNG(const string &path, ImageBuffer &buffer, int frame)
+	std::vector<bool> ReadPNG(const string &path, ImageBuffer &buffer, uint32_t frame)
 	{
 		// Open the file, and make sure it really is a PNG.
 		File file(path);
 		if(!file)
-			return false;
+			return {};
 		
 		// Set up libpng.
 		png_struct *png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
 		if(!png)
-			return false;
+			return {};
 		
 		png_info *info = png_create_info_struct(png);
 		if(!info)
 		{
 			png_destroy_read_struct(&png, nullptr, nullptr);
-			return false;
+			return {};
 		}
 		
 		if(setjmp(png_jmpbuf(png)))
 		{
 			png_destroy_read_struct(&png, &info, nullptr);
-			return false;
+			return {};
 		}
 		
 		png_init_io(png, file);
 		png_set_sig_bytes(png, 0);
 		
 		png_read_info(png, info);
-		int width = png_get_image_width(png, info);
-		int height = png_get_image_height(png, info);
+		uint32_t width = png_get_image_width(png, info);
+		uint32_t height = png_get_image_height(png, info);
 		// If the buffer is not yet allocated, allocate it.
 		buffer.Allocate(width, height);
 		// Make sure this frame's dimensions are valid.
 		if(!width || !height || width != buffer.Width() || height != buffer.Height())
 		{
 			png_destroy_read_struct(&png, &info, nullptr);
-			return false;
+			return {};
 		}
 		
 		// Adjust settings to make sure the result will be a BGRA file.
@@ -237,15 +293,13 @@ namespace {
 			png_set_expand_gray_1_2_4_to_8(png);
 		if(colorType == PNG_COLOR_TYPE_GRAY || colorType == PNG_COLOR_TYPE_GRAY_ALPHA)
 			png_set_gray_to_rgb(png);
-		if(colorType & PNG_COLOR_MASK_COLOR)
-			png_set_bgr(png);
 		// Let libpng handle any interlaced image decoding.
 		png_set_interlace_handling(png);
 		png_read_update_info(png, info);
 		
 		// Read the file.
 		vector<png_byte *> rows(height, nullptr);
-		for(int y = 0; y < height; ++y)
+		for(uint32_t y = 0; y < height; ++y)
 			rows[y] = reinterpret_cast<png_byte *>(buffer.Begin(y, frame));
 		
 		png_read_image(png, &rows.front());
@@ -253,16 +307,16 @@ namespace {
 		// Clean up. The file will be closed automatically.
 		png_destroy_read_struct(&png, &info, nullptr);
 		
-		return true;
+		return {true};
 	}
 	
 	
 	
-	bool ReadJPG(const string &path, ImageBuffer &buffer, int frame)
+	std::vector<bool> ReadJPG(const string &path, ImageBuffer &buffer, uint32_t frame)
 	{
 		File file(path);
 		if(!file)
-			return false;
+			return {};
 		
 		jpeg_decompress_struct cinfo;
 		struct jpeg_error_mgr jerr;
@@ -273,12 +327,12 @@ namespace {
 #pragma GCC diagnostic pop
 		
 		jpeg_stdio_src(&cinfo, file);
-		jpeg_read_header(&cinfo, true);
-		cinfo.out_color_space = JCS_EXT_BGRA;
+		jpeg_read_header(&cinfo, TRUE);
+		cinfo.out_color_space = JCS_RGB;
 		
 		jpeg_start_decompress(&cinfo);
-		int width = cinfo.image_width;
-		int height = cinfo.image_height;
+		uint32_t width = cinfo.image_width;
+		uint32_t height = cinfo.image_height;
 		// If the buffer is not yet allocated, allocate it.
 		buffer.Allocate(width, height);
 		// Make sure this frame's dimensions are valid.
@@ -286,12 +340,12 @@ namespace {
 		{
 			jpeg_finish_decompress(&cinfo);
 			jpeg_destroy_decompress(&cinfo);
-			return false;
+			return {};
 		}
 		
 		// Read the file.
 		vector<JSAMPLE *> rows(height, nullptr);
-		for(int y = 0; y < height; ++y)
+		for(uint32_t y = 0; y < height; ++y)
 			rows[y] = reinterpret_cast<JSAMPLE *>(buffer.Begin(y, frame));
 		
 		while(height)
@@ -300,14 +354,97 @@ namespace {
 		jpeg_finish_decompress(&cinfo);
 		jpeg_destroy_decompress(&cinfo);
 		
-		return true;
+		// Expand RGB to RGBA
+		for (unsigned int y = 0; y < cinfo.image_height; y++)
+		{
+			auto pptr = reinterpret_cast<uint8_t*>(buffer.Begin(y, frame));
+			for (int idx = width - 1; idx >= 0; --idx)
+			// for(int idx = 0; idx < width; ++idx)
+			{
+				pptr[idx * 4 + 0] = pptr[idx * 3 + 0];
+				pptr[idx * 4 + 1] = pptr[idx * 3 + 1];
+				pptr[idx * 4 + 2] = pptr[idx * 3 + 2];
+				pptr[idx * 4 + 3] = static_cast<unsigned char>(0xFF);
+			}
+		}
+
+		return {true};
 	}
 	
-	
-	
-	void Premultiply(ImageBuffer &buffer, int frame, int additive)
+	std::vector<bool> ReadWEBP(const string &path, ImageBuffer &buffer, uint32_t frame)
 	{
-		for(int y = 0; y < buffer.Height(); ++y)
+		File file(path);
+		if (!file)
+			return {};
+
+		FILE* f = file;
+		fseek(f, 0, SEEK_END);
+		size_t file_size = ftell(f);
+		fseek(f, 0, SEEK_SET);
+		//auto tmpbuf = std::vector<uint8_t>(file_size);
+		auto tmpbuf = new uint8_t[file_size];
+		auto elems_read = fread(tmpbuf, file_size, 1, f);
+		if (elems_read != 1)
+		{
+			return {};
+		}
+		// WebPMux* WebPMuxCreate(const WebPData* bitstream, int copy_data);
+		WebPData bitstream = {
+			.bytes = tmpbuf,
+			.size = file_size,
+		};
+
+		auto webp_deleter = [](WebPDemuxer* demux) { WebPDemuxDelete(demux); };
+		std::unique_ptr<WebPDemuxer, decltype(webp_deleter)> demux(WebPDemux(&bitstream), webp_deleter);
+		uint32_t width = WebPDemuxGetI(demux.get(), WEBP_FF_CANVAS_WIDTH);
+		uint32_t height = WebPDemuxGetI(demux.get(), WEBP_FF_CANVAS_HEIGHT);
+		uint32_t frame_count = WebPDemuxGetI(demux.get(), WEBP_FF_FRAME_COUNT);
+		if (frame_count > 1) {
+			buffer.Clear(frame_count);
+		}
+
+		buffer.Allocate(width, height);
+		// Make sure this frame's dimensions are valid.
+		if (!width || !height || width != buffer.Width() || height != buffer.Height())
+		{
+			return {};
+		}
+
+		std::vector<bool> result;
+		result.resize(frame_count, false);
+		WebPIterator iter;
+		if (WebPDemuxGetFrame(demux.get(), 1, &iter))
+		{
+			auto iter_deleter_lambda = [](WebPIterator* iter) { WebPDemuxReleaseIterator(iter); };
+			std::unique_ptr<WebPIterator, decltype(iter_deleter_lambda)> iter_deleter(&iter, iter_deleter_lambda);
+			do
+			{
+				auto frame_num = frame;
+				if (frame_count > 1)
+				{
+					frame_num = iter.frame_num - 1;
+				}
+				auto decoded = WebPDecodeRGBAInto(
+					iter.fragment.bytes, iter.fragment.size, (uint8_t*)buffer.Begin(0, frame_num), width * height * 4, width * 4);
+				result[frame_num] = decoded != nullptr;
+
+				if (decoded == nullptr)
+				{
+					printf("Bad stuff happened! path = %s, frame = %u\n", path.c_str(), frame);
+					return result;
+				}
+
+			} while (WebPDemuxNextFrame(&iter));
+			WebPDemuxReleaseIterator(&iter);
+		}
+		delete [] tmpbuf;
+
+		return result;
+	}
+	
+	void Premultiply(ImageBuffer &buffer, uint32_t frame, int additive)
+	{
+		for(uint32_t y = 0; y < buffer.Height(); ++y)
 		{
 			uint32_t *it = buffer.Begin(y, frame);
 			

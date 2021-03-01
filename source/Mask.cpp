@@ -22,7 +22,7 @@ using namespace std;
 
 namespace {
 	// Trace out a pixmap.
-	void Trace(const ImageBuffer &image, int frame, vector<Point> *raw)
+	void Trace(const ImageBuffer &image, uint32_t frame, vector<Point> *raw)
 	{
 		uint32_t on = 0xFF000000;
 		const uint32_t *begin = image.Pixels() + frame * image.Width() * image.Height();
@@ -36,8 +36,8 @@ namespace {
 		// This is where we will store the point:
 		Point point;
 		
-		for(int y = 0; y < image.Height(); ++y)
-			for(int x = 0; x < image.Width(); ++x)
+		for(uint32_t y = 0; y < image.Height(); ++y)
+			for(uint32_t x = 0; x < image.Width(); ++x)
 			{
 				// If this pixel is occupied, bail out of both loops.
 				if(*it & on)
@@ -220,7 +220,7 @@ Mask::Mask()
 
 // Construct a mask from the alpha channel of an SDL surface. (The surface
 // must therefore be a 4-byte RGBA format.)
-void Mask::Create(const ImageBuffer &image, int frame)
+void Mask::Create(const ImageBuffer &image, uint32_t frame)
 {
 	vector<Point> raw;
 	Trace(image, frame, &raw);
