@@ -129,7 +129,8 @@ if env["mode"] == "emcc":
 	env.Append(LINKFLAGS = [
 		"--source-map-base", "http://localhost:6931/",
 		"-s", "WASM_MEM_MAX=2147483648", # 2GB
-		"-s", "INITIAL_MEMORY=838860800", # 800MB
+		#"-s", "INITIAL_MEMORY=838860800", # 800MB
+		"-s", "INITIAL_MEMORY=629145600", # 600MB
 		"-s", "ALLOW_MEMORY_GROWTH=1",
 		"-s", "EXTRA_EXPORTED_RUNTIME_METHODS=['callMain']",
 		"--preload-file", "data",
