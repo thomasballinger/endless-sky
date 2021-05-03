@@ -67,6 +67,22 @@ namespace {
 
 
 
+string GameWindow::SDLVersions()
+{
+	SDL_version built;
+	SDL_version linked;
+	SDL_VERSION(&built);
+	SDL_GetVersion(&linked);
+	
+	auto toString = [](const SDL_version &v) -> string
+	{
+		return to_string(v.major) + "." + to_string(v.minor) + "." + to_string(v.patch);
+	};
+	return "Compiled against SDL v" + toString(built) + "\nUsing SDL v" + toString(linked);
+}
+
+
+
 bool GameWindow::Init()
 {
 	// This needs to be called before any other SDL commands.
@@ -81,7 +97,9 @@ bool GameWindow::Init()
 		ExitWithError("Unable to query monitor resolution!");
 		return false;
 	}
-		
+	if(mode.refresh_rate && mode.refresh_rate < 60)
+		Files::LogError("Warning: low monitor frame rate detected (" + to_string(mode.refresh_rate) + "). The game will run more slowly.");
+	
 	// Make the window just slightly smaller than the monitor resolution.
 	int minWidth = 640;
 	int minHeight = 480;
@@ -89,7 +107,9 @@ bool GameWindow::Init()
 	int maxHeight = mode.h;
 	if(maxWidth < minWidth || maxHeight < minHeight){
 		ExitWithError("Monitor resolution is too small!");
+#ifndef __EMSCRIPTEN__
 		return false;
+#endif
 	}
 	
 	int windowWidth = maxWidth - 100;
@@ -126,7 +146,13 @@ bool GameWindow::Init()
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #endif
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);	
+#ifdef ES_GLES
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+#else
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+#endif
 	SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
 		
 	context = SDL_GL_CreateContext(mainWindow);
@@ -141,7 +167,7 @@ bool GameWindow::Init()
 	}
 			
 	// Initialize GLEW.
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(ES_GLES)
 	glewExperimental = GL_TRUE;
 	if(glewInit() != GLEW_OK){
 		ExitWithError("Unable to initialize GLEW!");
@@ -400,6 +426,7 @@ void GameWindow::ExitWithError(const string& message, bool doPopUp)
 		box.title = "Endless Sky: Error";
 		box.message = message.c_str();
 		box.colorScheme = nullptr;
+		printf("Error: %s\n", message.c_str());
 		
 		SDL_MessageBoxButtonData button;
 		button.flags = SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;

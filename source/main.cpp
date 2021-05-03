@@ -34,6 +34,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include "Test.h"
 #include "UI.h"
 
+#include <chrono>
 #include <iostream>
 #include <map>
 
@@ -42,6 +43,10 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 #ifdef _WIN32
 #include <windows.h>
+#endif
+
+#ifdef __EMSCRIPTEN__
+#    include <emscripten.h>
 #endif
 
 using namespace std;
@@ -59,6 +64,22 @@ void InitConsole();
 // Entry point for the EndlessSky executable
 int main(int argc, char *argv[])
 {
+#ifdef __EMSCRIPTEN__
+	EM_ASM(FS.mkdir('/saves');
+	FS.mount(IDBFS, {}, '/saves');
+
+	// sync from persisted state into memory and then
+	// run the 'test' function
+	FS.syncfs(
+		true, function(err) {
+			assert(!err);
+			const contents = FS.lookupPath('saves').node.contents;
+			const numFiles = Object.keys(contents).length;
+			console.log(
+				numFiles ? numFiles : "No",
+				"save files found in IndexedDB.");
+		}););
+#endif
 	// Handle command-line arguments
 #ifdef _WIN32
 	if(argc > 1)
@@ -148,7 +169,7 @@ int main(int argc, char *argv[])
 	Preferences::Set("fullscreen", GameWindow::IsFullscreen());
 	Screen::SetRaw(GameWindow::Width(), GameWindow::Height());
 	Preferences::Save();
-
+	
 	Audio::Quit();
 	GameWindow::Quit();
 	
@@ -195,6 +216,7 @@ void GameLoop(PlayerInfo &player, const Conversation &conversation, const string
 	{
 		if(toggleTimeout)
 			--toggleTimeout;
+		chrono::steady_clock::time_point start = chrono::steady_clock::now();
 		
 		// Handle any events that occurred in this frame.
 		SDL_Event event;
@@ -258,7 +280,7 @@ void GameLoop(PlayerInfo &player, const Conversation &conversation, const string
 			showCursor = shouldShowCursor;
 			SDL_ShowCursor(showCursor);
 		}
-
+		
 		// Switch off fast-forward if the player is not in flight or flight-related screen
 		// (for example when the boarding dialog shows up or when the player lands). The player
 		// can switch fast-forward on again when flight is resumed.
@@ -308,8 +330,12 @@ void GameLoop(PlayerInfo &player, const Conversation &conversation, const string
 			SpriteShader::Draw(SpriteSet::Get("ui/fast forward"), Screen::TopLeft() + Point(10., 10.));
 		
 		GameWindow::Step();
-
+		
 		timer.Wait();
+		
+		// If the player ended this frame in-game, count the elapsed time as played time.
+		if(menuPanels.IsEmpty())
+			player.AddPlayTime(chrono::steady_clock::now() - start);
 	}
 	
 	// If player quit while landed on a planet, save the game if there are changes.
@@ -345,10 +371,12 @@ void PrintHelp()
 void PrintVersion()
 {
 	cerr << endl;
-	cerr << "Endless Sky 0.9.13-alpha" << endl;
+	cerr << "Endless Sky ver. 0.9.13" << endl;
 	cerr << "License GPLv3+: GNU GPL version 3 or later: <https://gnu.org/licenses/gpl.html>" << endl;
 	cerr << "This is free software: you are free to change and redistribute it." << endl;
 	cerr << "There is NO WARRANTY, to the extent permitted by law." << endl;
+	cerr << endl;
+	cerr << GameWindow::SDLVersions() << endl;
 	cerr << endl;
 }
 

@@ -24,6 +24,18 @@ Release/
 scons-local*
 .sconsign.dblite
 /*.d
+*.o
+favicon.ico
+
+# emscripten build generated files
+title.png
+dataversion.js
+Ubuntu-Regular.ttf
+output
+endless-sky.data
+endless-sky.js
+endless-sky.wasm
+endless-sky.wasm.map
 
 # Test Reports
 test-report.xml
@@ -60,3 +72,4 @@ ipch/
 .idea/
 .idea_modules/
 CMakeLists.txt
+/.gitmodules

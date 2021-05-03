@@ -55,10 +55,15 @@ bool SpriteShader::useShaderSwizzle = false;
 // Initialize the shaders.
 void SpriteShader::Init(bool useShaderSwizzle)
 {
+#ifdef ES_GLES
+	SpriteShader::useShaderSwizzle = true;
+#else
 	SpriteShader::useShaderSwizzle = useShaderSwizzle;
+#endif
 	
 	static const char *vertexCode =
 		"// vertex sprite shader\n"
+		"precision mediump float;\n"
 		"uniform vec2 scale;\n"
 		"uniform vec2 position;\n"
 		"uniform mat2 transform;\n"
@@ -69,7 +74,7 @@ void SpriteShader::Init(bool useShaderSwizzle)
 		"out vec2 fragTexCoord;\n"
 		
 		"void main() {\n"
-		"  vec2 blurOff = 2 * vec2(vert.x * abs(blur.x), vert.y * abs(blur.y));\n"
+		"  vec2 blurOff = 2.f * vec2(vert.x * abs(blur.x), vert.y * abs(blur.y));\n"
 		"  gl_Position = vec4((transform * (vert + blurOff) + position) * scale, 0, 1);\n"
 		"  vec2 texCoord = vert + vec2(.5, .5);\n"
 		"  fragTexCoord = vec2(texCoord.x, max(clip, texCoord.y)) + blurOff;\n"
@@ -78,6 +83,8 @@ void SpriteShader::Init(bool useShaderSwizzle)
 	ostringstream fragmentCodeStream;
 	fragmentCodeStream <<
 		"// fragment sprite shader\n"
+		"precision mediump float;\n"
+		"precision mediump sampler2DArray;\n"
 		"uniform sampler2DArray tex;\n"
 		"uniform float frame;\n"
 		"uniform float frameCount;\n"
@@ -97,9 +104,9 @@ void SpriteShader::Init(bool useShaderSwizzle)
 		"  float second = mod(ceil(frame), frameCount);\n"
 		"  float fade = frame - first;\n"
 		"  vec4 color;\n"
-		"  if(blur.x == 0 && blur.y == 0)\n"
+		"  if(blur.x == 0.f && blur.y == 0.f)\n"
 		"  {\n"
-		"    if(fade != 0)\n"
+		"    if(fade != 0.f)\n"
 		"      color = mix(\n"
 		"        texture(tex, vec3(fragTexCoord, first)),\n"
 		"        texture(tex, vec3(fragTexCoord, second)), fade);\n"
@@ -109,12 +116,12 @@ void SpriteShader::Init(bool useShaderSwizzle)
 		"  else\n"
 		"  {\n"
 		"    color = vec4(0., 0., 0., 0.);\n"
-		"    const float divisor = range * (range + 2) + 1;\n"
+		"    const float divisor = float(range * (range + 2) + 1);\n"
 		"    for(int i = -range; i <= range; ++i)\n"
 		"    {\n"
-		"      float scale = (range + 1 - abs(i)) / divisor;\n"
-		"      vec2 coord = fragTexCoord + (blur * i) / range;\n"
-		"      if(fade != 0)\n"
+		"      float scale = float(range + 1 - abs(i)) / divisor;\n"
+		"      vec2 coord = fragTexCoord + (blur * float(i)) / float(range);\n"
+		"      if(fade != 0.f)\n"
 		"        color += scale * mix(\n"
 		"          texture(tex, vec3(coord, first)),\n"
 		"          texture(tex, vec3(coord, second)), fade);\n"
@@ -259,10 +266,14 @@ void SpriteShader::Add(const Item &item, bool withBlur)
 	// Bounds check for the swizzle value:
 	int swizzle = (static_cast<size_t>(item.swizzle) >= SWIZZLE.size() ? 0 : item.swizzle);
 	// Set the color swizzle.
+#ifdef ES_GLES
+	glUniform1i(swizzlerI, swizzle);
+#else
 	if(SpriteShader::useShaderSwizzle)
 		glUniform1i(swizzlerI, swizzle);
 	else
 		glTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE[swizzle].data());
+#endif
 	
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
@@ -275,8 +286,12 @@ void SpriteShader::Unbind()
 	glUseProgram(0);
 	
 	// Reset the swizzle.
+#ifdef ES_GLES
+	glUniform1i(swizzlerI, 0);
+#else
 	if(SpriteShader::useShaderSwizzle)
 		glUniform1i(swizzlerI, 0);
 	else
 		glTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_SWIZZLE_RGBA, SWIZZLE[0].data());
+#endif
 }
