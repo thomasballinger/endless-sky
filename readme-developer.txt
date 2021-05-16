@@ -120,27 +120,15 @@ Install scons with apt, yum, brew, etc. Unlike the setup instructions for the no
   $ brew install scons  # mac
 
 Install Emscripten: follow instructions at https://emscripten.org/docs/getting_started/downloads.html
-This 
-
-Use the latest version (see instructions above) and source the emsdk_env.sh file so you can run commands like emcc, em++ and emmake.
+Use the 2.0.16 (see instructions above) and source the emsdk_env.sh file so you can run commands like emcc, em++ and emrun.
 The last time I checked, this looked like:
 
   $ git clone https://github.com/emscripten-core/emsdk.git
   $ cd emsdk
-  $ ./emsdk install latest
-  $ ./emsdk activate latest
+  $ ./emsdk install 2.0.16
+  $ ./emsdk activate 2.0.16
   $ source ./emsdk_env.sh  # you'll need to run this one each time you open a new terminal
-
-In the endless-sky repo directory, download and build libjpeg-turbo
-
-  $ wget https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/2.1.0.tar.gz
-  $ tar xzvf 2.1.0.tar.gz
-  $ cd libjpeg-turbo-2.1.0
-  $ emcmake cmake -G"Unix Makefiles" -DWITH_SIMD=0 -DCMAKE_BUILD_TYPE=Release -Wno-dev
-  $ emmake make
-  $ cd ..
 
 Now back in the endless-sky repo directory again, run
 
-  $ scons -j 8 mode=emcc music=off opengl=gles threads=off
-  $ emrun --serve_after_close --serve_after_exit --browser chrome --private_browsing endless-sky.html
+  $ make dev
