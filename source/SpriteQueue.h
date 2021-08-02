@@ -21,6 +21,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include <string>
 #include <thread>
 #include <vector>
+#include <chrono>
 
 class ImageBuffer;
 class ImageSet;
@@ -78,6 +79,12 @@ private:
 	
 	// Worker threads for loading sprites from disk.
 	std::vector<std::thread> threads;
+
+	// debug: timing image load
+	bool started = false;
+	bool finished = false;
+	std::chrono::time_point<std::chrono::high_resolution_clock> t0;
+
 };
 
 #endif
