@@ -21,6 +21,10 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 #include <algorithm>
 #include <functional>
 
+#include <iostream>
+#include <chrono>
+using namespace std::chrono;
+
 using namespace std;
 
 
@@ -57,6 +61,10 @@ void SpriteQueue::Add(const shared_ptr<ImageSet> &images)
 		// Do nothing if we are destroying the queue already.
 		if(added < 0)
 			return;
+		if(!started) {
+			started = true;
+			t0 = high_resolution_clock::now();
+		}
 		
 		toRead.push(images);
 		++added;
@@ -149,6 +157,7 @@ void SpriteQueue::operator()()
 
 double SpriteQueue::DoLoad(unique_lock<mutex> &lock)
 {
+
 	while(!toUnload.empty())
 	{
 		Sprite *sprite = SpriteSet::Modify(toUnload.front());
@@ -178,7 +187,14 @@ double SpriteQueue::DoLoad(unique_lock<mutex> &lock)
 	// The value of "added" is protected by readMutex.
 	unique_lock<mutex> readLock(readMutex);
 	// Special cases: we're bailing out, or we are done.
-	if(added <= 0 || added == completed)
+	if(added <= 0 || added == completed) {
+		if (added && !finished) {
+			finished = true;
+			auto t1 = high_resolution_clock::now();
+			auto duration = duration_cast<microseconds>(t1 - t0);
+			cout << "loaded " << completed << " images in " << duration.count() << " microseconds" << endl;
+		}
 		return 1.;
+	}
 	return static_cast<double>(completed) / static_cast<double>(added);
 }
