@@ -35,7 +35,6 @@ opts = Variables()
 opts.AddVariables(
 	EnumVariable("mode", "Compilation mode", "release", allowed_values=("release", "debug", "profile", "emcc")),
 	EnumVariable("opengl", "Whether to use OpenGL or OpenGL ES", "desktop", allowed_values=("desktop", "gles")),
-	EnumVariable("music", "Whether to use music", "on", allowed_values=("on", "off")),
 	PathVariable("BUILDDIR", "Directory to store compiled object files in", "build", PathVariable.PathIsDirCreate),
 	PathVariable("BIN_DIR", "Directory to store binaries in", ".", PathVariable.PathIsDirCreate),
 	PathVariable("DESTDIR", "Destination root directory, e.g. if building a package", "", PathVariable.PathAccept),
@@ -110,9 +109,6 @@ game_libs = [
 env.Append(LIBS = game_libs)
 
 if env["mode"] == "emcc":
-	if env["music"] != "off":
-		print("emcc requires music=off")
-		Exit(1)
 	if env["opengl"] != "gles":
 		print("emcc requires opengl=gles")
 		Exit(1)
@@ -159,9 +155,6 @@ if env["mode"] == "emcc":
 		"idbfs.js"
 	]);
 
-if env["music"] == "off":
-	flags += ["-DES_NO_MUSIC"]
-
 if env["opengl"] == "desktop":
 	env.Append(LIBS = [
 		"GL",
@@ -182,15 +175,13 @@ env.Append(CCFLAGS = flags)
 env.Append(CCFLAGS = common_flags)
 env.Append(LINKFLAGS = common_flags)
 
-
-if env["music"] == "on":
-	# libmad is not in the Steam runtime, so link it statically:
-	if 'steamrt_scout_i386' in chroot_name:
-		env.Append(LIBS = File("/usr/lib/i386-linux-gnu/libmad.a"))
-	elif 'steamrt_scout_amd64' in chroot_name:
-		env.Append(LIBS = File("/usr/lib/x86_64-linux-gnu/libmad.a"))
-	else:
-		env.Append(LIBS = "mad")
+# libmad is not in the Steam runtime, so link it statically:
+if 'steamrt_scout_i386' in chroot_name:
+	env.Append(LIBS = File("/usr/lib/i386-linux-gnu/libmad.a"))
+elif 'steamrt_scout_amd64' in chroot_name:
+	env.Append(LIBS = File("/usr/lib/x86_64-linux-gnu/libmad.a"))
+else:
+	env.Append(LIBS = "mad")
 
 
 binDirectory = '' if env["BIN_DIR"] == '.' else pathjoin(env["BIN_DIR"], env["mode"])
