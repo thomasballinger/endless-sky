@@ -137,7 +137,7 @@ if env["mode"] == "emcc":
 		"-s", "DEMANGLE_SUPPORT=1",
 		"-s", "GL_ASSERTIONS=1",
 		"-s", "ASYNCIFY",
-		"-s", "PTHREAD_POOL_SIZE=5",
+		"-s", "PTHREAD_POOL_SIZE=7", # deadlocks with 6, ok with 7
 		"-s", "MIN_WEBGL_VERSION=2",
 		"-s", "FETCH=1",
 		"-s", "WASM_MEM_MAX=2147483648", # 2GB
@@ -180,7 +180,7 @@ if 'steamrt_scout_i386' in chroot_name:
 	env.Append(LIBS = File("/usr/lib/i386-linux-gnu/libmad.a"))
 elif 'steamrt_scout_amd64' in chroot_name:
 	env.Append(LIBS = File("/usr/lib/x86_64-linux-gnu/libmad.a"))
-else:
+elif env["mode"] != "emcc":
 	env.Append(LIBS = "mad")
 
 
