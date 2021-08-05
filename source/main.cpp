@@ -87,6 +87,7 @@ int main(int argc, char *argv[])
 	Conversation conversation;
 	bool debugMode = false;
 	bool loadOnly = false;
+	bool enableMusic = true;
 	string testToRunName = "";
 
 	for(const char *const *it = argv + 1; *it; ++it)
@@ -110,6 +111,8 @@ int main(int argc, char *argv[])
 			loadOnly = true;
 		else if(arg == "--test" && *++it)
 			testToRunName = *it;
+		else if (arg == "--no-music")
+			enableMusic = false;
 	}
 	
 	try {
@@ -150,7 +153,7 @@ int main(int argc, char *argv[])
 		// Show something other than a blank window.
 		GameWindow::Step();
 		
-		Audio::Init(GameData::Sources());
+		Audio::Init(GameData::Sources(), enableMusic);
 		
 		// This is the main loop where all the action begins.
 		GameLoop(player, conversation, testToRunName, debugMode);
