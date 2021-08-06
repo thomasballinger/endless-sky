@@ -1,0 +1,105 @@
+import os
+from SCons.Node.FS import Dir
+
+def pathjoin(*args):
+	return os.path.join(*args)
+
+scons_toolset = ['default']
+env = DefaultEnvironment(tools = scons_toolset, ENV = os.environ)
+opts = Variables()
+opts.AddVariables(
+	PathVariable("BUILDDIR", "Directory to store compiled object files in", "build", PathVariable.PathIsDirCreate),
+)
+opts.Update(env)
+Help(opts.GenerateHelpText(env))
+
+env.Replace(ARFLAGS = 'rcs')
+
+# no uuid_generate_random provided by Emscripten, so alias to uuid_generate
+env.Append(CCFLAGS = ["-Duuid_generate_random=uuid_generate"])
+
+env.Append(LIBS = [
+	"openal",
+	"GLESv2",
+])
+
+env['CXX'] = "em++"
+env['CC'] = "emcc"
+env['AR'] = "emar"
+env['RANLIB'] = "emranlib"
+
+env.Append(CCFLAGS = [
+	"-std=c++11",
+	"-Wall",
+	"-Werror",
+	"-Wold-style-cast",
+
+	"-DES_GLES",
+
+	"-gsource-map",
+	"-fno-rtti",
+	"-I", "libjpeg-turbo-2.1.0",
+])
+common_flags = [
+	"-O3",
+	"-flto",
+	"-s", "USE_SDL=2",
+	"-s", "USE_LIBPNG=1",
+	"-pthread",
+
+	# debugging
+	"-s", "DISABLE_EXCEPTION_CATCHING=0",
+]
+env.Append(CCFLAGS = common_flags)
+env.Append(LINKFLAGS = common_flags)
+
+env.Append(LINKFLAGS = [
+	"-L", "libjpeg-turbo-2.1.0",
+	"-l", "jpeg",
+
+	# debugging
+	"--source-map-base", "http://localhost:6931/",
+	"-s", "USE_WEBGL2=1",
+	"-s", "ASSERTIONS=2",
+	"-s", "DEMANGLE_SUPPORT=1",
+	"-s", "GL_ASSERTIONS=1",
+
+	"--closure", "1",
+	"-s", "ASYNCIFY",
+	"-s", "PTHREAD_POOL_SIZE=7", # <=6 deadlocks
+	"-s", "MIN_WEBGL_VERSION=2",
+	"-s", "MAX_WEBGL_VERSION=2",
+	"-s", "WASM_MEM_MAX=2147483648", # 2GB
+	"-s", "INITIAL_MEMORY=629145600", # 600MB
+	"-s", "ALLOW_MEMORY_GROWTH=1",
+
+	# load these directories in a virtual filesystem
+	"--preload-file", "data",
+	"--preload-file", "images",
+	"--preload-file", "sounds",
+	"--preload-file", "credits.txt",
+	"--preload-file", "keys.txt",
+	"--preload-file", "dummy@saves/dummy",
+	"--emrun",
+])
+
+
+buildDirectory = pathjoin(env["BUILDDIR"], 'emcc')
+libDirectory = pathjoin("lib", "emcc")
+VariantDir(buildDirectory, "source", duplicate = 0)
+
+# Find all regular source files.
+def RecursiveGlob(pattern, dir_name=buildDirectory):
+	# Start with source files in subdirectories.
+	matches = [RecursiveGlob(pattern, sub_dir) for sub_dir in Glob(pathjoin(str(dir_name), "*"))
+		if isinstance(sub_dir, Dir)]
+	# Add source files in this directory, except for main.cpp
+	matches += Glob(pathjoin(str(dir_name), pattern))
+	matches = [i for i in matches if not "/main.cpp" in str(i)]
+	return matches
+
+# By default, invoking scons will build the backing archive file and then the game binary.
+sourceLib = env.StaticLibrary(pathjoin(libDirectory, "endless-sky"), RecursiveGlob("*.cpp", buildDirectory))
+exeObjs = [Glob(pathjoin(buildDirectory, f)) for f in ("main.cpp",)]
+sky = env.Program("endless-sky.html", exeObjs + sourceLib)
+env.Default(sky)
