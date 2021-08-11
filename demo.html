@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+  <script>
+    var Module = {
+      onRuntimeInitialized: function() {
+        Module.randSeed(123);
+        console.log('randInt result: ' + Module.randInt(100));
+        const pointsVec = Module.GetNPositions(`formation "Empty By Skips"
+                line
+                        start -100 200
+                        end 100 200
+                        slots 2
+                        skip first
+                        skip last
+                        repeat
+                                start -100 200
+                                end 100 200
+                                alternating
+        `, 0, 10)
+      }
+    };
+  </script>
+  <script src="lib/embind/lib.js"></script>
+</html>

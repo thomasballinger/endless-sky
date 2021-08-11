@@ -49,7 +49,6 @@ CFLAGS = $(COMMON_FLAGS)\
 	-DES_GLES\
 	-DES_NO_THREADS\
 	-gsource-map\
-	-fno-rtti\
 	-I libjpeg-turbo-2.1.0\
 
 
@@ -125,3 +124,26 @@ deploy: output/index.html
 	aws cloudfront create-invalidation --distribution-id E2TZUW922XPLEF --paths /\*
 	# play-endless-web.com
 	aws cloudfront create-invalidation --distribution-id E3D0Y4DMGSVPWC --paths /\*
+
+
+
+
+
+
+
+
+
+
+
+build/emcc/datanode-factory.o: tests/src/helpers/datanode-factory.cpp
+	@mkdir -p build/emcc
+	@mkdir -p build/emcc/text
+	em++ $(CFLAGS) -c tests/src/helpers/datanode-factory.cpp -I tests/include -o build/emcc/datanode-factory.o
+
+lib/embind/lib.js lib/embind/lib.wasm: $(OBJS) lib.cpp build/emcc/datanode-factory.o
+	@mkdir -p lib/embind
+	emcc -s MODULARIZE=1 -s 'EXPORT_NAME="createMyModule"' -s --bind -o lib/embind/lib.js $(OBJS_EXCEPT_MAIN) lib.cpp build/emcc/datanode-factory.o
+
+demo: demo.html lib/embind/lib.js
+	emrun --serve_after_close --serve_after_exit --browser chrome --private_browsing demo.html
+

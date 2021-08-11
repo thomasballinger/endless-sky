@@ -58,6 +58,9 @@ public:
 	const double &X() const noexcept;
 	double &Y();
 	const double &Y() const noexcept;
+
+	double Xval() const;
+	double Yval() const;
 	
 	void Set(double x, double y);
 	
