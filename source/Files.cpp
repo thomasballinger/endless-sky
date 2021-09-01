@@ -63,13 +63,17 @@ namespace {
 
 void Files::Init(const char * const *argv)
 {
+	bool resourcesSpecifiedWithArg = false;
 	// Parse the command line arguments to see if the user has specified
 	// different directories to use.
 	for(const char * const *it = argv + 1; *it; ++it)
 	{
 		string arg = *it;
 		if((arg == "-r" || arg == "--resources") && *++it)
+		{
 			resources = *it;
+			resourcesSpecifiedWithArg = true;
+		}
 		else if((arg == "-c" || arg == "--config") && *++it)
 			config = *it;
 			
@@ -91,28 +95,32 @@ void Files::Init(const char * const *argv)
 #endif
 	if(resources.back() != '/')
 		resources += '/';
+	if(!resourcesSpecifiedWithArg)
+	{
 #if defined __linux__ || defined __FreeBSD__ || defined __DragonFly__
-	// Special case, for Linux: the resource files are not in the same place as
-	// the executable, but are under the same prefix (/usr or /usr/local).
-	static const string LOCAL_PATH = "/usr/local/";
-	static const string STANDARD_PATH = "/usr/";
-	static const string RESOURCE_PATH = "share/games/endless-sky/";
-	if(!resources.compare(0, LOCAL_PATH.length(), LOCAL_PATH))
-		resources = LOCAL_PATH + RESOURCE_PATH;
-	else if(!resources.compare(0, STANDARD_PATH.length(), STANDARD_PATH))
-		resources = STANDARD_PATH + RESOURCE_PATH;
+		// Special case, for Linux: the resource files are not in the
+		// same place as the executable, but are under the same prefix
+		// (/usr or /usr/local).
+		static const string LOCAL_PATH = "/usr/local/";
+		static const string STANDARD_PATH = "/usr/";
+		static const string RESOURCE_PATH = "share/games/endless-sky/";
+		if(!resources.compare(0, LOCAL_PATH.length(), LOCAL_PATH))
+			resources = LOCAL_PATH + RESOURCE_PATH;
+		else if(!resources.compare(0, STANDARD_PATH.length(), STANDARD_PATH))
+			resources = STANDARD_PATH + RESOURCE_PATH;
 #elif defined __APPLE__
-	// Special case for Mac OS X: the resources are in ../Resources relative to
-	// the folder the binary is in.
-	resources = resources + "../Resources/";
+		// Special case for Mac OS X: the resources are in ../Resources
+		// relative to the folder the binary is in.
+		resources = resources + "../Resources/";
 #endif
+	}
 	// If the resources are not here, search in the directories containing this
 	// one. This allows, for example, a Mac app that does not actually have the
 	// resources embedded within it.
 	while(!Exists(resources + "credits.txt"))
 	{
 		size_t pos = resources.rfind('/', resources.length() - 2);
-		if(pos == string::npos || pos == 0)
+		if(pos == string::npos || pos == 0 || resourcesSpecifiedWithArg)
 			throw runtime_error("Unable to find the resource directories!");
 		resources.erase(pos + 1);
 	}
