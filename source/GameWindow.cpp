@@ -14,6 +14,7 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 #include "Files.h"
 #include "ImageBuffer.h"
+#include "Preferences.h"
 #include "Screen.h"
 
 #include "gl_header.h"
